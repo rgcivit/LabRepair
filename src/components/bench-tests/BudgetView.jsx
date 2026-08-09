@@ -167,7 +167,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
       companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
       companyCuit: 'CUIT: 30-71628312-9',
       companyAddress: 'Av. Juan de Garay 1420, CABA',
-      companyPhone: '+54 11 5110-2200',
+      companyPhone: '+54 9 2616625074',
       companyEmail: 'calibracion@labrepair.com',
       pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
     };
