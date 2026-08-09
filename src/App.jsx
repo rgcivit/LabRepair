@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getWorkOrders, saveWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
@@ -7,7 +7,11 @@ import BudgetView from './components/bench-tests/BudgetView';
 import InventoryView from './components/inventory/InventoryView';
 import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
+import ClientsView from './components/clients/ClientsView';
+import EquipmentCatalogView from './components/catalog/EquipmentCatalogView';
 import { generateQCCertificate, exportWorkOrdersToPDF } from './services/pdfService';
+import { getClients, saveClient, deleteClient, syncClientsFromWorkOrders } from './services/clientService';
+import { getEquipmentTypes, saveEquipmentType, deleteEquipmentType } from './services/catalogService';
 
 // Servicios de autenticación y vista de login
 import { getCurrentUser, logout, changePassword } from './services/authService';
@@ -29,9 +33,12 @@ export default function App() {
   // Inicialización de estados desde localStorage
   const [orders, setOrders] = useState(() => getWorkOrders());
   const [inventory, setInventory] = useState(() => getInventory());
+  const [clients, setClients] = useState(() => syncClientsFromWorkOrders(getWorkOrders()));
+  const [equipmentTypes, setEquipmentTypes] = useState(() => getEquipmentTypes());
   
   // Control de modales y paneles
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState(null); // Orden abierta en el modal en modo edición
   const [selectedOrder, setSelectedOrder] = useState(null); // Orden seleccionada para "Ver Diagnóstico"
   
   // Estado de navegación y búsqueda
@@ -48,11 +55,54 @@ export default function App() {
     setInventory(getInventory());
   };
 
-  // Callback de guardado de nueva OT (desde modal)
-  const handleCreateOrder = (newOrder) => {
-    const updated = saveWorkOrder(newOrder);
+  // Callback de guardado del modal, tanto en alta como en edición de una OT
+  const handleSaveOrderFromModal = (order) => {
+    const updated = saveWorkOrder(order);
     setOrders(updated);
-    refreshData();
+    setClients(syncClientsFromWorkOrders(updated));
+    if (orderToEdit && selectedOrder?.id === orderToEdit.id) {
+      setSelectedOrder(updated.find(o => o.id === orderToEdit.id) || null);
+    }
+  };
+
+  const handleOpenNewOrder = () => {
+    setOrderToEdit(null);
+    setIsNewOrderModalOpen(true);
+  };
+
+  const handleEditOrder = (order) => {
+    setOrderToEdit(order);
+    setIsNewOrderModalOpen(true);
+  };
+
+  const handleDeleteOrder = (order) => {
+    if (!window.confirm(`¿Eliminar definitivamente la orden ${order.id} de ${order.clientName}?\n\nEsta acción no se puede deshacer.`)) return;
+
+    const updated = deleteWorkOrder(order.id);
+    setOrders(updated);
+    if (selectedOrder?.id === order.id) setSelectedOrder(null);
+  };
+
+  // --- CARTERA DE CLIENTES ---
+  const handleSaveClient = (client) => {
+    const res = saveClient(client);
+    setClients(res.clients);
+    return res;
+  };
+
+  const handleDeleteClient = (clientId) => {
+    setClients(deleteClient(clientId));
+  };
+
+  // --- CATÁLOGO DE EQUIPOS ---
+  const handleSaveEquipmentType = (type) => {
+    const res = saveEquipmentType(type);
+    setEquipmentTypes(res.types);
+    return res;
+  };
+
+  const handleDeleteEquipmentType = (typeId) => {
+    setEquipmentTypes(deleteEquipmentType(typeId));
   };
 
   // Acción integrada al hacer clic en "Ver Diagnóstico" desde el Dashboard o la Lista de Órdenes
@@ -104,6 +154,8 @@ export default function App() {
     if (backupPackage.settings) {
       localStorage.setItem('estetica_lab_settings', JSON.stringify(backupPackage.settings));
     }
+    setClients(getClients());
+    setEquipmentTypes(getEquipmentTypes());
     
     // Forzar actualización de estados reactivos
     setOrders(backupPackage.workOrders || []);
@@ -253,7 +305,7 @@ export default function App() {
             )}
           </div>
           <button
-            onClick={() => setIsNewOrderModalOpen(true)}
+            onClick={handleOpenNewOrder}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 rounded-lg shadow-lg hover:shadow-cyan-400/20 active:scale-95 transition-all shrink-0"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
@@ -350,7 +402,47 @@ export default function App() {
             )}
           </button>
 
-          {/* 5. Historial Clínico por Serie */}
+          {/* 5. Clientes */}
+          <button
+            onClick={() => { setActiveTab('clients'); }}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
+              activeTab === 'clients'
+                ? 'bg-slate-900 text-cyan-400 font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+              </svg>
+              <span>Clientes</span>
+            </div>
+            <span className="bg-slate-800 text-[11px] text-slate-300 font-bold px-2 py-0.5 rounded-full">
+              {clients.length}
+            </span>
+          </button>
+
+          {/* 6. Catálogo de Equipos */}
+          <button
+            onClick={() => { setActiveTab('catalog'); }}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
+              activeTab === 'catalog'
+                ? 'bg-slate-900 text-cyan-400 font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122" />
+              </svg>
+              <span>Equipos</span>
+            </div>
+            <span className="bg-slate-800 text-[11px] text-slate-300 font-bold px-2 py-0.5 rounded-full">
+              {equipmentTypes.length}
+            </span>
+          </button>
+
+          {/* 7. Historial Clínico por Serie */}
           <button
             onClick={() => { setActiveTab('history'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -564,17 +656,33 @@ export default function App() {
                               <PriorityBadge priority={order.priority} />
                             </td>
 
-                            {/* Botón Ver Diagnóstico */}
+                            {/* Acciones sobre la orden */}
                             <td className="py-4 px-6 text-right">
-                              <button
-                                onClick={() => handleViewDiagnostic(order)}
-                                className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
-                              >
-                                <span>Ver Diagnóstico</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleViewDiagnostic(order)}
+                                  className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
+                                >
+                                  <span>Ver Diagnóstico</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleEditOrder(order)}
+                                  title="Editar la orden de trabajo"
+                                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-lg transition-colors"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteOrder(order)}
+                                  title="Eliminar la orden de trabajo"
+                                  className="px-3 py-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300 bg-rose-950/30 border border-rose-900/40 hover:bg-rose-950/60 rounded-lg transition-colors"
+                                >
+                                  Borrar
+                                </button>
+                              </div>
                             </td>
 
                           </tr>
@@ -718,6 +826,26 @@ export default function App() {
             />
           )}
 
+          {/* SECCIÓN 3B: CARTERA DE CLIENTES */}
+          {activeTab === 'clients' && (
+            <ClientsView
+              clients={clients}
+              workOrders={orders}
+              onSaveClient={handleSaveClient}
+              onDeleteClient={handleDeleteClient}
+            />
+          )}
+
+          {/* SECCIÓN 3C: CATÁLOGO DE TIPOS Y MODELOS DE EQUIPOS */}
+          {activeTab === 'catalog' && (
+            <EquipmentCatalogView
+              equipmentTypes={equipmentTypes}
+              workOrders={orders}
+              onSaveType={handleSaveEquipmentType}
+              onDeleteType={handleDeleteEquipmentType}
+            />
+          )}
+
           {/* SECCIÓN 4: HISTORIAL CLÍNICO POR N° DE SERIE */}
           {activeTab === 'history' && (
             <SerialHistoryView 
@@ -746,12 +874,13 @@ export default function App() {
         </div>
       </footer>
 
-      {/* MODAL DE ALTA DE ORDEN DE TRABAJO */}
+      {/* MODAL DE ALTA / EDICIÓN DE ORDEN DE TRABAJO */}
       <NewWorkOrderModal 
         isOpen={isNewOrderModalOpen}
-        onClose={() => setIsNewOrderModalOpen(false)}
-        onSave={handleCreateOrder}
+        onClose={() => { setIsNewOrderModalOpen(false); setOrderToEdit(null); }}
+        onSave={handleSaveOrderFromModal}
         existingOrders={orders}
+        orderToEdit={orderToEdit}
       />
 
       {/* MODAL DE CAMBIO DE CONTRASEÑA */}

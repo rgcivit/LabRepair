@@ -24,31 +24,41 @@ export const getWorkOrders = () => {
 };
 
 /**
- * Guarda o actualiza una orden de trabajo en localStorage.
+ * Genera el próximo identificador correlativo de orden de trabajo (OT-004, OT-005, ...).
+ * @param {Array} orders - Listado actual de órdenes.
+ * @returns {string} Nuevo identificador.
+ */
+const buildNextOrderId = (orders) => {
+  const nextIdNum = orders.reduce((max, o) => {
+    const idNum = parseInt(String(o.id).replace('OT-', ''), 10);
+    return !isNaN(idNum) && idNum > max ? idNum : max;
+  }, 0) + 1;
+  return `OT-${String(nextIdNum).padStart(3, '0')}`;
+};
+
+/**
+ * Guarda una orden de trabajo: actualiza la existente o la agrega si su ID no está registrado.
  * @param {Object} workOrder - Orden de trabajo a guardar.
  * @returns {Array} Listado actualizado de órdenes de trabajo.
  */
 export const saveWorkOrder = (workOrder) => {
+  const orders = getWorkOrders();
+
   try {
-    const orders = getWorkOrders();
+    const existingIndex = workOrder.id
+      ? orders.findIndex(order => order.id === workOrder.id)
+      : -1;
+
     let updatedOrders;
 
-    if (workOrder.id) {
-      // Actualizar orden existente
-      updatedOrders = orders.map(order => 
+    if (existingIndex > -1) {
+      updatedOrders = orders.map(order =>
         order.id === workOrder.id ? { ...order, ...workOrder } : order
       );
     } else {
-      // Crear nueva orden con ID único incremental
-      const nextIdNum = orders.reduce((max, o) => {
-        const idNum = parseInt(o.id.replace('OT-', ''), 10);
-        return !isNaN(idNum) && idNum > max ? idNum : max;
-      }, 0) + 1;
-      
-      const newId = `OT-${String(nextIdNum).padStart(3, '0')}`;
       const newOrder = {
         ...workOrder,
-        id: newId,
+        id: workOrder.id || buildNextOrderId(orders),
         entryDate: workOrder.entryDate || new Date().toISOString().split('T')[0]
       };
       updatedOrders = [...orders, newOrder];
@@ -58,7 +68,25 @@ export const saveWorkOrder = (workOrder) => {
     return updatedOrders;
   } catch (error) {
     console.error("Error al guardar la orden de trabajo en localStorage:", error);
-    return [];
+    return orders;
+  }
+};
+
+/**
+ * Elimina definitivamente una orden de trabajo.
+ * @param {string} orderId - Identificador de la orden a eliminar.
+ * @returns {Array} Listado actualizado de órdenes de trabajo.
+ */
+export const deleteWorkOrder = (orderId) => {
+  const orders = getWorkOrders();
+
+  try {
+    const updatedOrders = orders.filter(order => order.id !== orderId);
+    localStorage.setItem(WORK_ORDERS_KEY, JSON.stringify(updatedOrders));
+    return updatedOrders;
+  } catch (error) {
+    console.error("Error al eliminar la orden de trabajo en localStorage:", error);
+    return orders;
   }
 };
 
@@ -88,8 +116,9 @@ export const getInventory = () => {
  * @returns {Array} Listado actualizado del inventario.
  */
 export const saveInventoryItem = (item) => {
+  const inventory = getInventory();
+
   try {
-    const inventory = getInventory();
     let updatedInventory;
 
     if (item.id) {
@@ -116,6 +145,6 @@ export const saveInventoryItem = (item) => {
     return updatedInventory;
   } catch (error) {
     console.error("Error al guardar el ítem de inventario en localStorage:", error);
-    return [];
+    return inventory;
   }
 };

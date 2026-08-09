@@ -1,4 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getEquipmentTypes } from '../../services/catalogService';
+import { getClients } from '../../services/clientService';
+
+// Estados posibles de una orden, editables una vez creada
+const ORDER_STATUSES = [
+  'INGRESO',
+  'EN_DIAGNOSTICO',
+  'PRESUPUESTADO',
+  'ESPERANDO_REPUESTO',
+  'EN_PRUEBAS',
+  'LISTO',
+  'ENTREGADO'
+];
+
+/**
+ * Fecha local en formato YYYY-MM-DD (evita el corrimiento de día que produce toISOString con UTC).
+ * @returns {string} Fecha de hoy.
+ */
+const todayISO = () => {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+  return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
+};
 
 // List of pre-defined accessories for interactive selection
 const AVAILABLE_ACCESSORIES = [
@@ -18,8 +41,9 @@ const INITIAL_STATE = {
   brand: '',
   model: '',
   serialNumber: '',
-  equipmentType: 'Criolipólisis',
+  equipmentType: '',
   priority: 'MEDIA',
+  status: 'INGRESO',
   accessories: [],
   cosmeticCondition: ''
 };
@@ -31,15 +55,23 @@ const INITIAL_STATE = {
  * @param {Object} props
  * @param {boolean} props.isOpen - Indica si el modal está abierto.
  * @param {Function} props.onClose - Función para cerrar el modal.
- * @param {Function} props.onSave - Callback al guardar la nueva OT: (nuevaOT) => void.
+ * @param {Function} props.onSave - Callback al guardar la OT: (orden) => void.
  * @param {Array} props.existingOrders - Listado de órdenes de trabajo previas para sugerencia de clientes.
+ * @param {Object|null} props.orderToEdit - Orden existente a editar; si es nula, el modal opera en modo alta.
  */
-export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrders = [] }) {
+export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrders = [], orderToEdit = null }) {
   const [form, setForm] = useState(INITIAL_STATE);
+  const isEditing = Boolean(orderToEdit);
 
-  // Memoizar lista de clientes únicos e históricos para autocompletar
+  const equipmentTypes = React.useMemo(() => (isOpen ? getEquipmentTypes() : []), [isOpen]);
+
+  // Clientes de la cartera, completados con los que solo figuran en órdenes históricas
   const uniqueClients = React.useMemo(() => {
+    if (!isOpen) return [];
     const clientsMap = {};
+    getClients().forEach(client => {
+      clientsMap[client.name.trim()] = client.phone || '';
+    });
     existingOrders.forEach(order => {
       if (order.clientName) {
         const name = order.clientName.trim();
@@ -49,9 +81,32 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
       }
     });
     return Object.entries(clientsMap).map(([name, phone]) => ({ name, phone }));
-  }, [existingOrders]);
+  }, [existingOrders, isOpen]);
+
+  // Sincroniza el formulario con la orden en edición (o lo limpia al dar de alta)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (orderToEdit) {
+      setForm({
+        clientName: orderToEdit.clientName || '',
+        clientPhone: orderToEdit.clientPhone || '',
+        brand: orderToEdit.brand || '',
+        model: orderToEdit.model || '',
+        serialNumber: orderToEdit.serialNumber || '',
+        equipmentType: orderToEdit.equipmentType || '',
+        priority: orderToEdit.priority || 'MEDIA',
+        status: orderToEdit.status || 'INGRESO',
+        accessories: orderToEdit.accessories || [],
+        cosmeticCondition: orderToEdit.cosmeticCondition || ''
+      });
+    } else {
+      setForm({ ...INITIAL_STATE, equipmentType: '' });
+    }
+  }, [isOpen, orderToEdit]);
 
   if (!isOpen) return null;
+
+  const availableModels = equipmentTypes.find(t => t.name === form.equipmentType)?.models || [];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -91,13 +146,9 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
       return;
     }
 
-    // Generación de un ID único y aleatorio de OT para este paso (ej: OT-1482)
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newId = `OT-${randomNum}`;
-
-    // Construcción del objeto de orden de trabajo según requerimientos del Paso 3
-    const newWorkOrder = {
-      id: newId,
+    // En alta se delega la generación del ID correlativo al servicio de almacenamiento
+    const workOrder = {
+      ...(orderToEdit || {}),
       clientName: form.clientName.trim(),
       clientPhone: form.clientPhone.trim(),
       brand: form.brand.trim(),
@@ -106,18 +157,18 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
       equipmentType: form.equipmentType,
       equipmentName: `${form.equipmentType} ${form.brand.trim()} ${form.model.trim()}`,
       priority: form.priority,
-      status: 'INGRESO', // Estado inicial por defecto
-      entryDate: new Date().toISOString().split('T')[0], // Fecha actual YYYY-MM-DD
+      status: isEditing ? form.status : 'INGRESO',
+      entryDate: orderToEdit?.entryDate || todayISO(),
       accessories: form.accessories,
       cosmeticCondition: form.cosmeticCondition.trim(),
-      problemDescription: 'Ingreso inicial para diagnóstico.',
-      diagnosis: '',
-      solution: '',
-      cost: 0,
-      spareParts: []
+      problemDescription: orderToEdit?.problemDescription || 'Ingreso inicial para diagnóstico.',
+      diagnosis: orderToEdit?.diagnosis || '',
+      solution: orderToEdit?.solution || '',
+      cost: orderToEdit?.cost || 0,
+      spareParts: orderToEdit?.spareParts || []
     };
 
-    onSave(newWorkOrder);
+    onSave(workOrder);
     handleClose();
   };
 
@@ -137,7 +188,7 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
             <h2 className="text-lg font-bold text-zinc-100 tracking-wide uppercase">
-              Ingreso de Nuevo Equipo (Alta OT)
+              {isEditing ? `Editar Orden de Trabajo (${orderToEdit.id})` : 'Ingreso de Nuevo Equipo (Alta OT)'}
             </h2>
           </div>
           <button 
@@ -215,14 +266,18 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
                   name="equipmentType"
                   value={form.equipmentType}
                   onChange={handleChange}
+                  required
                   className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
                 >
-                  <option value="Criolipólisis">Criolipólisis</option>
-                  <option value="Láser Diodo">Láser Diodo</option>
-                  <option value="Radiofrecuencia">Radiofrecuencia</option>
-                  <option value="Cavitador">Cavitador</option>
-                  <option value="Vacumterapia">Vacumterapia</option>
+                  <option value="">Seleccione un tipo...</option>
+                  {equipmentTypes.map(type => (
+                    <option key={type.id} value={type.name}>{type.name}</option>
+                  ))}
+                  {form.equipmentType && !equipmentTypes.some(t => t.name === form.equipmentType) && (
+                    <option value={form.equipmentType}>{form.equipmentType} (fuera de catálogo)</option>
+                  )}
                 </select>
+                <p className="text-[10px] text-zinc-600 mt-1">Los tipos se administran en la sección Equipos.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5">
@@ -245,12 +300,18 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
                 <input 
                   type="text" 
                   name="model"
+                  list="catalog-models"
                   required
                   value={form.model}
                   onChange={handleChange}
                   placeholder="Ej: IceSculpt 360, Accent Prime"
                   className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
                 />
+                <datalist id="catalog-models">
+                  {availableModels.map(model => (
+                    <option key={model} value={model} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5">
@@ -303,6 +364,30 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
               })}
             </div>
           </div>
+
+          {isEditing && (
+            <>
+              <hr className="border-zinc-900" />
+              <div>
+                <label className="block text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
+                  Estado de la Orden
+                </label>
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={handleChange}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
+                >
+                  {ORDER_STATUSES.map(status => (
+                    <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+                  ))}
+                  {form.status && !ORDER_STATUSES.includes(form.status) && (
+                    <option value={form.status}>{form.status}</option>
+                  )}
+                </select>
+              </div>
+            </>
+          )}
 
           <hr className="border-zinc-900" />
 
@@ -373,11 +458,11 @@ export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrd
           </button>
           <button
             type="button"
-            disabled={!form.clientName.trim() || !form.clientPhone.trim() || !form.brand.trim() || !form.model.trim() || !form.serialNumber.trim()}
+            disabled={!form.clientName.trim() || !form.clientPhone.trim() || !form.brand.trim() || !form.model.trim() || !form.serialNumber.trim() || !form.equipmentType}
             onClick={handleSubmit}
             className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed rounded-lg shadow-lg hover:shadow-indigo-500/20 shadow-indigo-600/10 transition-all duration-200"
           >
-            Registrar Ingreso (OT)
+            {isEditing ? 'Guardar Cambios' : 'Registrar Ingreso (OT)'}
           </button>
         </div>
 
