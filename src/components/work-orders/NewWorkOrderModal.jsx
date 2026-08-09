@@ -4,8 +4,8 @@ import { saveWorkOrder } from "../../services/storageService";
 
 const COMMON_ACCESSORIES = [
   "Cargador / Fuente",
-  "Cable de alimentación",
-  "Batería",
+  "Cable de alimentaciï¿½n",
+  "Baterï¿½a",
   "Funda / Estuche",
   "Tarjeta de memoria",
   "Mando / Control remoto"
@@ -86,13 +86,13 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                     className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Ej. Juan Pérez"
+                    placeholder="Ej. Juan Pï¿½rez"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Telï¿½fono</label>
                 <div className="relative">
                   <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -119,7 +119,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
                   value={formData.deviceType}
                   onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Ej. Ecógrafo, Balanza..."
+                  placeholder="Ej. Ecï¿½grafo, Balanza..."
                 />
               </div>
 
@@ -136,7 +136,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Número de Serie</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nï¿½mero de Serie</label>
                 <input
                   type="text"
                   value={formData.serialNumber}
@@ -201,7 +201,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
               </button>
             </div>
 
-            {/* Muestra accesorios agregados que no corresponden a la lista estándar */}
+            {/* Muestra accesorios agregados que no corresponden a la lista estï¿½ndar */}
             {selectedAccessories.filter((a) => !COMMON_ACCESSORIES.includes(a)).length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {selectedAccessories
@@ -245,3 +245,5 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
     </div>
   );
 };
+
+export default NewWorkOrderModal;
