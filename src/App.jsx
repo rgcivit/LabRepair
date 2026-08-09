@@ -8,6 +8,7 @@ import InventoryView from './components/inventory/InventoryView';
 import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
 import { generateQCCertificate, exportWorkOrdersToPDF } from './services/pdfService';
+import { saveSettings } from './services/settingsService';
 
 // Servicios de autenticación y vista de login
 import { getCurrentUser, logout, changePassword } from './services/authService';
@@ -102,7 +103,7 @@ export default function App() {
       localStorage.setItem('labrepair_inventory', JSON.stringify(backupPackage.inventory));
     }
     if (backupPackage.settings) {
-      localStorage.setItem('estetica_lab_settings', JSON.stringify(backupPackage.settings));
+      saveSettings(backupPackage.settings);
     }
     
     // Forzar actualización de estados reactivos

@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getUsers, registerUser } from '../../services/authService';
-
-const DEFAULT_SETTINGS = {
-  companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
-  companyCuit: 'CUIT: 30-71628312-9',
-  companyAddress: 'Av. Juan de Garay 1420, CABA',
-  companyPhone: '+54 11 5110-2200',
-  companyEmail: 'calibracion@labrepair.com',
-  currency: 'ARS',
-  pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
-  technicianName: 'Ing. Responsable de Calibración',
-  licenseNumber: 'Reg. Nac. Ing. Clínica Nro. 78241',
-  logo: '',
-  signature: ''
-};
+import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../../services/settingsService';
 
 /**
  * Componente SettingsView para la configuración del laboratorio, carga de firma digital
@@ -56,21 +43,14 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
 
   // Cargar configuraciones guardadas en localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('estetica_lab_settings');
-    if (saved) {
-      try {
-        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
-      } catch (e) {
-        console.error("Error al decodificar las configuraciones de taller:", e);
-      }
-    }
+    setSettings(loadSettings());
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...settings, [name]: value };
     setSettings(updated);
-    localStorage.setItem('estetica_lab_settings', JSON.stringify(updated));
+    saveSettings(updated);
   };
 
   // Conversión de archivos cargados (PNG/JPG) a Base64
@@ -92,7 +72,7 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     reader.onload = (event) => {
       const updated = { ...settings, [fieldName]: event.target.result };
       setSettings(updated);
-      localStorage.setItem('estetica_lab_settings', JSON.stringify(updated));
+      saveSettings(updated);
       setFileError('');
     };
     reader.readAsDataURL(file);
@@ -101,7 +81,7 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
   const handleRemoveImage = (fieldName) => {
     const updated = { ...settings, [fieldName]: '' };
     setSettings(updated);
-    localStorage.setItem('estetica_lab_settings', JSON.stringify(updated));
+    saveSettings(updated);
   };
 
   // --- COPIAS DE SEGURIDAD (BACKUP SYSTEM) ---
@@ -231,6 +211,21 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
                   className="w-full bg-slate-900 border border-slate-850 rounded px-3 py-2 text-slate-300 focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">WhatsApp del Laboratorio</label>
+                <input
+                  type="text"
+                  name="whatsappNumber"
+                  value={settings.whatsappNumber}
+                  onChange={handleChange}
+                  placeholder="Ej: +54 9 2616625074"
+                  className="w-full bg-slate-900 border border-slate-850 rounded px-3 py-2 text-slate-300 focus:outline-none"
+                />
+                <p className="text-[9px] text-slate-600 mt-1 leading-snug">
+                  Número que figura como contacto en presupuestos y PDFs. El envío sale de la cuenta con la que esté iniciada la sesión de WhatsApp Web en este navegador.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Email</label>
                 <input
