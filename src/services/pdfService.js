@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
+import { loadSettings } from "./settingsService";
 
 /**
  * Servicio técnico de generación de reportes e informes de ingeniería en PDF.
@@ -15,29 +16,7 @@ export const generateQCCertificate = (order) => {
     return;
   }
 
-  // Carga dinámica de configuraciones desde localStorage
-  let settings = {
-    companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
-    companyCuit: 'CUIT: 30-71628312-9',
-    companyAddress: 'Av. Juan de Garay 1420, CABA',
-    companyPhone: '+54 11 5110-2200',
-    companyEmail: 'calibracion@labrepair.com',
-    currency: 'ARS',
-    pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
-    technicianName: 'Ing. Responsable de Calibración',
-    licenseNumber: 'Reg. Nac. Ing. Clínica Nro. 78241',
-    logo: '',
-    signature: ''
-  };
-
-  try {
-    const saved = localStorage.getItem('estetica_lab_settings');
-    if (saved) {
-      settings = { ...settings, ...JSON.parse(saved) };
-    }
-  } catch (e) {
-    console.error("Error al cargar configuraciones dinámicas para el PDF:", e);
-  }
+  const settings = loadSettings();
 
   // Inicializa la instancia del documento jsPDF
   const doc = new jsPDF();
@@ -322,34 +301,11 @@ export const generateQCCertificate = (order) => {
   doc.setTextColor(148, 163, 184);
   doc.setFontSize(6.5);
   doc.text(settings.pdfFooter.toUpperCase(), 15, 285);
-  doc.text(`DIRECCIÓN: ${settings.companyAddress} | EMAIL: ${settings.companyEmail} | TEL: ${settings.companyPhone}`, 15, 289);
+  doc.text(`DIRECCIÓN: ${settings.companyAddress} | EMAIL: ${settings.companyEmail} | TEL: ${settings.companyPhone} | WHATSAPP: ${settings.whatsappNumber}`, 15, 289);
 
   // Activa la descarga automática del archivo en el cliente con un nombre único
   const filename = `${order.id || "OT-000"} - ${order.clientName || "Cliente"}.pdf`;
   doc.save(filename);
-};
-
-/**
- * Carga configuraciones de localStorage de forma segura.
- */
-const loadSettings = () => {
-  let settings = {
-    companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
-    companyCuit: 'CUIT: 30-71628312-9',
-    companyAddress: 'Av. Juan de Garay 1420, CABA',
-    companyPhone: '+54 11 5110-2200',
-    companyEmail: 'calibracion@labrepair.com',
-    pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
-  };
-  try {
-    const saved = localStorage.getItem('estetica_lab_settings');
-    if (saved) {
-      settings = { ...settings, ...JSON.parse(saved) };
-    }
-  } catch (e) {
-    console.error("Error al cargar configuraciones dinámicas:", e);
-  }
-  return settings;
 };
 
 /**

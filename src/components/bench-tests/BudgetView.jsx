@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
+import { loadSettings, toWhatsAppNumber } from '../../services/settingsService';
 
 /**
  * Componente BudgetView de alta gama comercial e ingenieril.
@@ -161,22 +162,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   // --- EXPORTAR PDF FORMAL DE COTIZACIÓN ---
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
-    
-    // Carga dinámica de configuraciones desde localStorage
-    let settings = {
-      companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
-      companyCuit: 'CUIT: 30-71628312-9',
-      companyAddress: 'Av. Juan de Garay 1420, CABA',
-      companyPhone: '+54 11 5110-2200',
-      companyEmail: 'calibracion@labrepair.com',
-      pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
-    };
-    try {
-      const saved = localStorage.getItem('estetica_lab_settings');
-      if (saved) settings = { ...settings, ...JSON.parse(saved) };
-    } catch (e) {
-      console.error(e);
-    }
+    const settings = loadSettings();
 
     // Header corporativo Slate y Cyan
     doc.setFillColor(30, 41, 59); // Slate 800
@@ -412,7 +398,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(6.5);
       doc.text(settings.pdfFooter.toUpperCase(), 15, 285);
-      doc.text(`Página ${i} de ${pageCount} | Dirección: ${settings.companyAddress}`, 15, 289);
+      doc.text(`Página ${i} de ${pageCount} | Dirección: ${settings.companyAddress} | WhatsApp: ${settings.whatsappNumber}`, 15, 289);
     }
 
     doc.save(`${selectedOT.id} - ${selectedOT.clientName}.pdf`);
@@ -420,7 +406,14 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
 
   // --- WHATSAPP TEMPLATES ---
   const handleSendWhatsApp = () => {
-    const cleanPhone = selectedOT.clientPhone.replace(/[^\d+]/g, '');
+    const settings = loadSettings();
+    const clientPhone = toWhatsAppNumber(selectedOT.clientPhone);
+
+    if (!clientPhone) {
+      alert('La orden de trabajo no tiene un teléfono de contacto válido para WhatsApp.');
+      return;
+    }
+
     const formattedTotal = `${curSymbol} ${grandTotal.toLocaleString('es-AR')} ${currency}`;
     const partsTextList = imputedParts.length > 0
       ? imputedParts.map(p => `• *${p.name}* (${p.quality}) (x${p.quantity}): ${curSymbol} ${(p.price * p.quantity).toLocaleString('es-AR')} ${currency}`).join('\n')
@@ -480,9 +473,10 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
 ¡Cualquier duda técnica estamos para asesorarlo!`;
     }
 
-    const encodedMessage = encodeURIComponent(mensaje);
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-    window.open(waUrl, '_blank');
+    mensaje += `\n\n—\n📱 *LabRepair* | WhatsApp de atención: ${settings.whatsappNumber}`;
+
+    const waUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(mensaje)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
