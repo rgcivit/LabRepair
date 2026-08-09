@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getWorkOrders, saveWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
@@ -42,7 +42,7 @@ export default function App() {
   // Filtros de estado en la pestaña de Órdenes
   const [statusFilter, setStatusFilter] = useState('TODOS');
 
-  // Sincroniza datos en tiempo real si es necesario (ej. cuando se guardan o agregan registros)
+  // Sincroniza datos en tiempo real si es necesario
   const refreshData = () => {
     setOrders(getWorkOrders());
     setInventory(getInventory());
@@ -55,27 +55,39 @@ export default function App() {
     refreshData();
   };
 
-  // Acción integrada al hacer clic en "Ver Diagnóstico" desde el Dashboard o la Lista de Órdenes
+  // Función para borrar orden de trabajo
+  const handleDeleteOrder = (id, e) => {
+    if (e) e.stopPropagation();
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta Orden de Trabajo?')) {
+      const updatedList = deleteWorkOrder(id);
+      setOrders(updatedList);
+      if (selectedOrder?.id === id) {
+        setSelectedOrder(null);
+      }
+      refreshData();
+    }
+  };
+
+  // Acción integrada al hacer clic en "Ver Diagnóstico"
   const handleViewDiagnostic = (order) => {
     setSelectedOrder(order);
     setActiveTab('diagnostic');
-    setBenchSubTab('measurements'); // Por defecto al banco de mediciones
+    setBenchSubTab('measurements');
   };
 
-  // Callback general para guardar/actualizar una OT en banco o presupuesto
+  // Callback general para guardar/actualizar una OT
   const handleSaveOT = (updatedOrder) => {
     const updatedList = saveWorkOrder(updatedOrder);
     setOrders(updatedList);
-    setSelectedOrder(updatedOrder); // Sincroniza el panel de trabajo con los nuevos datos
+    setSelectedOrder(updatedOrder);
     refreshData();
   };
 
-  // Callback para imputar y descontar stock del inventario en tiempo real
+  // Callback para imputar y descontar stock
   const handleDiscountStock = (itemId, quantity) => {
     const item = inventory.find(i => i.id === itemId);
     if (!item) return;
 
-    // Descontar la cantidad (si la cantidad es negativa, se suma de nuevo al inventario)
     const updatedItem = {
       ...item,
       stock: Math.max(0, item.stock - quantity)
@@ -86,14 +98,14 @@ export default function App() {
     refreshData();
   };
 
-  // Callback para agregar/editar repuestos de forma global en la pestaña InventoryView
+  // Callback para repuestos de forma global
   const handleSaveInventoryItemGlobal = (item) => {
     const updatedInventory = saveInventoryItem(item);
     setInventory(updatedInventory);
     refreshData();
   };
 
-  // Callback para restaurar una base de datos importada por copia de seguridad (JSON)
+  // Callback para restaurar base de datos
   const handleRestoreData = (backupPackage) => {
     if (backupPackage.workOrders) {
       localStorage.setItem('labrepair_work_orders', JSON.stringify(backupPackage.workOrders));
@@ -105,7 +117,6 @@ export default function App() {
       localStorage.setItem('estetica_lab_settings', JSON.stringify(backupPackage.settings));
     }
     
-    // Forzar actualización de estados reactivos
     setOrders(backupPackage.workOrders || []);
     setInventory(backupPackage.inventory || []);
     refreshData();
@@ -151,17 +162,14 @@ export default function App() {
 
   // --- FILTRADO DE ÓRDENES EN TIEMPO REAL ---
   const filteredOrders = orders.filter(order => {
-    // 1. Filtrar por buscador de texto (N° OT, Cliente, N° de Serie, Marca, Modelo o Tipo)
     const query = filterQuery.toLowerCase().trim();
     const matchesSearch = !query || 
-      order.id.toLowerCase().includes(query) ||
-      order.clientName.toLowerCase().includes(query) ||
-      order.serialNumber.toLowerCase().includes(query) ||
-      order.brand.toLowerCase().includes(query) ||
-      order.model.toLowerCase().includes(query) ||
-      order.equipmentType.toLowerCase().includes(query);
+      (order.id && order.id.toLowerCase().includes(query)) ||
+      (order.clientName && order.clientName.toLowerCase().includes(query)) ||
+      (order.serialNumber && order.serialNumber.toLowerCase().includes(query)) ||
+      (order.brandModel && order.brandModel.toLowerCase().includes(query)) ||
+      (order.deviceType && order.deviceType.toLowerCase().includes(query));
 
-    // 2. Filtrar por Selector de Estado (específico de la pestaña 'Órdenes')
     const matchesStatus = statusFilter === 'TODOS' || order.status === statusFilter;
 
     return matchesSearch && matchesStatus;
@@ -176,7 +184,6 @@ export default function App() {
       
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Marca, Logo y Usuario (Margen Superior Izquierdo) */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-5 w-full sm:w-auto">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-cyan-500/20 animate-pulse">
@@ -192,7 +199,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Menú de Usuario Logueado (Margen Superior Izquierdo) */}
           <div className="relative">
             <button
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
@@ -226,7 +232,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Buscador Integrado y Botón Nueva OT */}
         <div className="flex items-center gap-3 w-full sm:w-auto max-w-md">
           <div className="relative w-full">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 pointer-events-none">
@@ -265,13 +270,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL: SIDEBAR + PANEL */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col md:flex-row">
         
-        {/* SIDEBAR LATERAL (MENÚ DE 6 VISTAS PRINCIPALES) */}
+        {/* SIDEBAR LATERAL */}
         <aside className="w-full md:w-64 bg-slate-950 border-r border-slate-800 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto shrink-0 scrollbar-none">
-          
-          {/* 1. Dashboard Taller */}
           <button
             onClick={() => { setActiveTab('dashboard'); setStatusFilter('TODOS'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -288,7 +291,6 @@ export default function App() {
             </div>
           </button>
 
-          {/* 2. Órdenes de Trabajo */}
           <button
             onClick={() => { setActiveTab('orders'); setStatusFilter('TODOS'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -308,7 +310,6 @@ export default function App() {
             </span>
           </button>
 
-          {/* 3. Diagnóstico & Banco */}
           <button
             onClick={() => { setActiveTab('diagnostic'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -328,7 +329,6 @@ export default function App() {
             </span>
           </button>
 
-          {/* 4. Repuestos & Almacén */}
           <button
             onClick={() => { setActiveTab('repuestos'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -350,7 +350,6 @@ export default function App() {
             )}
           </button>
 
-          {/* 5. Historial Clínico por Serie */}
           <button
             onClick={() => { setActiveTab('history'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -367,7 +366,6 @@ export default function App() {
             </div>
           </button>
 
-          {/* 6. Configuración & Respaldos */}
           <button
             onClick={() => { setActiveTab('settings'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
@@ -384,19 +382,14 @@ export default function App() {
               <span>Configuración</span>
             </div>
           </button>
-
         </aside>
 
         {/* ÁREA DE CONTENIDO DINÁMICO */}
         <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
-          
-          {/* SECCIÓN 1: VISTA DASHBOARD & REGISTRO DE ÓRDENES */}
           {(activeTab === 'dashboard' || activeTab === 'orders') && (
             <>
-              {/* TARJETAS DE MÉTRICAS (KPIs) */}
+              {/* TARJETAS DE MÉTRICAS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                
-                {/* Órdenes Activas */}
                 <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Órdenes Activas</span>
@@ -410,7 +403,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Esperando Repuestos */}
                 <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Esperando Repuesto</span>
@@ -424,7 +416,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Listos para Entrega */}
                 <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Listos para Entrega</span>
@@ -438,7 +429,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Alertas de Stock */}
                 <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
                   <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Alertas de Stock</span>
@@ -451,13 +441,10 @@ export default function App() {
                     </svg>
                   </div>
                 </div>
-
               </div>
 
               {/* TABLA PRINCIPAL DE ÓRDENES */}
               <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-                
-                {/* Cabecera de la sección de la Tabla */}
                 <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h3 className="text-base font-bold text-white tracking-wide">
@@ -467,7 +454,6 @@ export default function App() {
                   </div>
                   
                   <div className="flex items-center gap-3 self-end sm:self-auto">
-                    {/* Botón de exportación unificado en PDF */}
                     <button
                       type="button"
                       onClick={() => exportWorkOrdersToPDF(filteredOrders)}
@@ -477,7 +463,6 @@ export default function App() {
                       📄 Exportar PDF
                     </button>
 
-                    {/* Filtro específico de estado si está en pestaña Órdenes */}
                     {activeTab === 'orders' && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-400 font-medium">Estado:</span>
@@ -500,7 +485,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Tabla de Datos */}
                 <div className="overflow-x-auto">
                   {filteredOrders.length === 0 ? (
                     <div className="text-center py-12 px-4">
@@ -528,53 +512,57 @@ export default function App() {
                         {filteredOrders.map((order) => (
                           <tr key={order.id} className="hover:bg-slate-900/60 transition-colors group">
                             
-                            {/* Orden ID */}
                             <td className="py-4 px-6 font-semibold text-cyan-400 tracking-wider">
                               <span className="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800 shadow-inner group-hover:border-cyan-500/20 transition-all">
                                 {order.id}
                               </span>
                             </td>
 
-                            {/* Equipo y Marca */}
                             <td className="py-4 px-4">
-                              <div className="font-semibold text-slate-200">{order.equipmentName}</div>
+                              <div className="font-semibold text-slate-200">{order.equipmentName || order.deviceType}</div>
                               <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                <span className="bg-slate-900 px-1.5 py-0.5 rounded text-[10px] text-slate-400 font-mono">S/N: {order.serialNumber}</span>
+                                <span className="bg-slate-900 px-1.5 py-0.5 rounded text-[10px] text-slate-400 font-mono">S/N: {order.serialNumber || 'S/D'}</span>
                               </div>
                             </td>
 
-                            {/* Cliente / Clínica */}
                             <td className="py-4 px-4">
                               <div className="text-slate-300 font-medium">{order.clientName}</div>
                               <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-emerald-500">
-                                  <path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm9-3a1 1 0 10-2 0v3H6a1 1 0 100 2h3v3a1 1 0 102 0v-3h3a1 1 0 100-2h-3V7z"/>
-                                </svg>
-                                <span className="hover:text-emerald-400 transition-colors cursor-pointer">{order.clientPhone}</span>
+                                <span className="hover:text-emerald-400 transition-colors">{order.clientPhone}</span>
                               </div>
                             </td>
 
-                            {/* Estado Badge */}
                             <td className="py-4 px-4 text-center">
                               <StatusBadge status={order.status} />
                             </td>
 
-                            {/* Prioridad Badge */}
                             <td className="py-4 px-4 text-center">
                               <PriorityBadge priority={order.priority} />
                             </td>
 
-                            {/* Botón Ver Diagnóstico */}
+                            {/* COLUMNA DE ACCIONES CON EL BOTÓN BORRAR */}
                             <td className="py-4 px-6 text-right">
-                              <button
-                                onClick={() => handleViewDiagnostic(order)}
-                                className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
-                              >
-                                <span>Ver Diagnóstico</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleViewDiagnostic(order)}
+                                  className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
+                                >
+                                  <span>Ver Diagnóstico</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                  </svg>
+                                </button>
+
+                                <button
+                                  onClick={(e) => handleDeleteOrder(order.id, e)}
+                                  className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 border border-transparent hover:border-rose-900/50 rounded-lg transition-colors"
+                                  title="Borrar Orden"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
 
                           </tr>
@@ -588,7 +576,6 @@ export default function App() {
             </>
           )}
 
-          {/* SECCIÓN 2: DIAGNÓSTICO & BANCO DE PRUEBAS COMPLETO */}
           {activeTab === 'diagnostic' && (
             <div className="space-y-6">
               <div className="bg-slate-950 border border-slate-800 p-6 rounded-xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -612,8 +599,6 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Listado de equipos en banco */}
                 <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden p-4 space-y-3">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Equipos en Diagnóstico / Prueba</h4>
                   <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
@@ -634,7 +619,7 @@ export default function App() {
                             <span className="text-xs font-mono font-bold text-cyan-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">{order.id}</span>
                             <StatusBadge status={order.status} />
                           </div>
-                          <h5 className="font-bold text-sm text-slate-200">{order.equipmentName}</h5>
+                          <h5 className="font-bold text-sm text-slate-200">{order.equipmentName || order.deviceType}</h5>
                           <p className="text-xs text-slate-500 mt-1">Clínica: {order.clientName}</p>
                           <div className="mt-2.5 flex items-center justify-between">
                             <PriorityBadge priority={order.priority} />
@@ -646,12 +631,9 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Área de Edición Workbench con Sub-pestañas */}
                 <div className="lg:col-span-2">
                   {selectedOrder ? (
                     <div className="space-y-4">
-                      
-                      {/* Sub-Navegación del Banco de Pruebas */}
                       <div className="flex border border-slate-800 bg-slate-950 p-1.5 rounded-xl gap-2">
                         <button
                           type="button"
@@ -677,7 +659,6 @@ export default function App() {
                         </button>
                       </div>
 
-                      {/* Renderizado Condicional del Componente Técnico */}
                       {benchSubTab === 'measurements' ? (
                         <BenchTestView
                           selectedOT={selectedOrder}
@@ -693,24 +674,21 @@ export default function App() {
                           onDiscountStock={handleDiscountStock}
                         />
                       )}
-
                     </div>
                   ) : (
                     <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-12 text-center text-slate-500">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1" stroke="currentColor" className="w-16 h-16 mx-auto text-slate-700 mb-4 animate-pulse">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12M11.42 7.7a1.5 1.5 0 011.5 1.5v2.12m0 0a1.5 1.5 0 01-1.5 1.5h-2.12" />
                       </svg>
                       <h5 className="text-slate-400 font-bold uppercase tracking-wider">No hay banco de trabajo seleccionado</h5>
                       <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">Seleccione una orden de trabajo de la lista de la izquierda para abrirla en el banco electrónico.</p>
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
           )}
 
-          {/* SECCIÓN 3: REPUESTOS & ALMACÉN MASTER */}
           {activeTab === 'repuestos' && (
             <InventoryView 
               inventory={inventory}
@@ -718,14 +696,12 @@ export default function App() {
             />
           )}
 
-          {/* SECCIÓN 4: HISTORIAL CLÍNICO POR N° DE SERIE */}
           {activeTab === 'history' && (
             <SerialHistoryView 
               workOrders={orders}
             />
           )}
 
-          {/* SECCIÓN 5: CONFIGURACIÓN & RESPALDOS */}
           {activeTab === 'settings' && (
             <SettingsView 
               workOrders={orders}
@@ -733,7 +709,6 @@ export default function App() {
               onRestoreData={handleRestoreData}
             />
           )}
-
         </main>
       </div>
 
@@ -746,7 +721,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* MODAL DE ALTA DE ORDEN DE TRABAJO */}
+      {/* MODAL NUEVA ORDEN */}
       <NewWorkOrderModal 
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
@@ -754,7 +729,7 @@ export default function App() {
         existingOrders={orders}
       />
 
-      {/* MODAL DE CAMBIO DE CONTRASEÑA */}
+      {/* MODAL CAMBIO DE CONTRASEÑA */}
       {isChangePasswordOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsChangePasswordOpen(false)} />
