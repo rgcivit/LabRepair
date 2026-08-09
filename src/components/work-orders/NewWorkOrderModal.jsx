@@ -1,15 +1,18 @@
 import React, { useState } from "react";
-import { X, Wrench, User, Phone, FileText, AlertCircle, Plus } from "lucide-react";
+import { X, Wrench, User, Phone, FileText, AlertCircle, Plus, Camera } from "lucide-react";
 import { saveWorkOrder } from "../../services/storageService";
 
 const COMMON_ACCESSORIES = [
   "Cargador / Fuente",
-  "Cable de alimentaci�n",
-  "Bater�a",
+  "Cable de alimentación",
+  "Batería",
   "Funda / Estuche",
   "Tarjeta de memoria",
   "Mando / Control remoto"
 ];
+
+// Máximo de fotos permitidas por orden
+const MAX_IMAGES = 4;
 
 export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -25,6 +28,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
 
   const [selectedAccessories, setSelectedAccessories] = useState([]);
   const [customAccessory, setCustomAccessory] = useState("");
+  const [images, setImages] = useState([]); // Estado para guardar las fotos en Base64
 
   if (!isOpen) return null;
 
@@ -44,6 +48,39 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
     }
   };
 
+  // Manejador para subir y convertir imágenes a Base64
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    const remainingSlots = MAX_IMAGES - images.length;
+
+    if (files.length > remainingSlots) {
+      alert(`Solo puedes subir hasta ${MAX_IMAGES} fotos en total.`);
+    }
+
+    const filesToProcess = files.slice(0, remainingSlots);
+
+    filesToProcess.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        alert(`El archivo ${file.name} no es una imagen válida.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Agrega la imagen en Base64 al estado
+        setImages(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Limpiar el input para permitir subir la misma foto si se borró
+    e.target.value = '';
+  };
+
+  const removeImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const newOrder = {
@@ -51,12 +88,16 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
       status: "INGRESADO",
       entryDate: new Date().toISOString().split("T")[0],
       accessories: selectedAccessories,
+      images: images, // Guardamos el array de fotos en Base64 en la OT
       spareParts: []
     };
 
     saveWorkOrder(newOrder);
     if (onSave) onSave();
     onClose();
+    // Limpiar estado local al cerrar
+    setImages([]);
+    setSelectedAccessories([]);
   };
 
   return (
@@ -86,13 +127,13 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                     className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Ej. Juan P�rez"
+                    placeholder="Ej. Juan Pérez"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tel�fono</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                 <div className="relative">
                   <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -119,7 +160,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
                   value={formData.deviceType}
                   onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Ej. Ec�grafo, Balanza..."
+                  placeholder="Ej. Ecógrafo, Balanza..."
                 />
               </div>
 
@@ -136,7 +177,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">N�mero de Serie</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Número de Serie</label>
                 <input
                   type="text"
                   value={formData.serialNumber}
@@ -201,7 +242,7 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
               </button>
             </div>
 
-            {/* Muestra accesorios agregados que no corresponden a la lista est�ndar */}
+            {/* Muestra accesorios agregados que no corresponden a la lista estándar */}
             {selectedAccessories.filter((a) => !COMMON_ACCESSORIES.includes(a)).length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {selectedAccessories
@@ -223,6 +264,47 @@ export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
                   ))}
               </div>
             )}
+          </div>
+
+          {/* Sección de Fotos del Equipo (Estado de Recepción) */}
+          <div className="space-y-4 border-t border-slate-100 pt-6">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+               <Camera className="w-5 h-5 text-indigo-500" />
+               Fotos del Equipo (Recepción)
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Vista previa de imágenes subidas */}
+              {images.map((image, index) => (
+                <div key={index} className="relative group aspect-square bg-slate-100 rounded-lg border border-slate-200 overflow-hidden shadow-inner">
+                  <img src={image} alt={`Vista previa ${index + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-1 right-1 p-1 bg-white/80 backdrop-blur-sm rounded-full text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Botón para subir fotos (se oculta si llega al máximo) */}
+              {images.length < MAX_IMAGES && (
+                <label className="flex flex-col items-center justify-center aspect-square bg-slate-50 hover:bg-slate-100 rounded-lg border-2 border-slate-300 border-dashed cursor-pointer transition-colors text-center p-group">
+                  <Camera className="w-8 h-8 text-slate-400 mb-2" />
+                  <span className="text-xs font-medium text-slate-600">Subir Foto</span>
+                  <span className="text-[10px] text-slate-400 mt-1">({images.length} / {MAX_IMAGES})</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                  />
+                </label>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-400">Puedes subir fotos desde la cámara de tu celular o archivos de tu PC (Máx. 4). Ayuda a documentar rayones o golpes previos.</p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
