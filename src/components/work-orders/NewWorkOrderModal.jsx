@@ -1,387 +1,247 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { X, Wrench, User, Phone, FileText, AlertCircle, Plus } from "lucide-react";
+import { saveWorkOrder } from "../../services/storageService";
 
-// List of pre-defined accessories for interactive selection
-const AVAILABLE_ACCESSORIES = [
-  "Cabezal Principal",
-  "Cabezal Secundario",
-  "Pedal de Disparo",
-  "Cable de Poder",
-  "Gafas de Operador",
-  "Gafas de Paciente",
-  "Embudo de Carga",
-  "Manual / Documentaci贸n"
+const COMMON_ACCESSORIES = [
+  "Cargador / Fuente",
+  "Cable de alimentaci髇",
+  "Bater韆",
+  "Funda / Estuche",
+  "Tarjeta de memoria",
+  "Mando / Control remoto"
 ];
 
-const INITIAL_STATE = {
-  clientName: '',
-  clientPhone: '',
-  brand: '',
-  model: '',
-  serialNumber: '',
-  equipmentType: 'Criolip贸lisis',
-  priority: 'MEDIA',
-  accessories: [],
-  cosmeticCondition: ''
-};
+export const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    clientName: "",
+    clientPhone: "",
+    deviceType: "",
+    brandModel: "",
+    serialNumber: "",
+    issueDescription: "",
+    estimatedBudget: "",
+    priority: "MEDIA"
+  });
 
-/**
- * Componente Modal para el registro y alta de 贸rdenes de trabajo.
- * Dise帽ado con una est茅tica oscura ("Taller/Laboratorio Electr贸nico") y bordes de alta tecnolog铆a.
- * 
- * @param {Object} props
- * @param {boolean} props.isOpen - Indica si el modal est谩 abierto.
- * @param {Function} props.onClose - Funci贸n para cerrar el modal.
- * @param {Function} props.onSave - Callback al guardar la nueva OT: (nuevaOT) => void.
- * @param {Array} props.existingOrders - Listado de 贸rdenes de trabajo previas para sugerencia de clientes.
- */
-export default function NewWorkOrderModal({ isOpen, onClose, onSave, existingOrders = [] }) {
-  const [form, setForm] = useState(INITIAL_STATE);
-
-  // Memoizar lista de clientes 煤nicos e hist贸ricos para autocompletar
-  const uniqueClients = React.useMemo(() => {
-    const clientsMap = {};
-    existingOrders.forEach(order => {
-      if (order.clientName) {
-        const name = order.clientName.trim();
-        if (!clientsMap[name]) {
-          clientsMap[name] = order.clientPhone || '';
-        }
-      }
-    });
-    return Object.entries(clientsMap).map(([name, phone]) => ({ name, phone }));
-  }, [existingOrders]);
+  const [selectedAccessories, setSelectedAccessories] = useState([]);
+  const [customAccessory, setCustomAccessory] = useState("");
 
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => {
-      const updated = { ...prev, [name]: value };
-      if (name === 'clientName') {
-        const matchedClient = uniqueClients.find(c => c.name.toLowerCase() === value.trim().toLowerCase());
-        if (matchedClient) {
-          updated.clientPhone = matchedClient.phone;
-        }
-      }
-      return updated;
-    });
+  const handleAccessoryToggle = (accessory) => {
+    if (selectedAccessories.includes(accessory)) {
+      setSelectedAccessories(selectedAccessories.filter((a) => a !== accessory));
+    } else {
+      setSelectedAccessories([...selectedAccessories, accessory]);
+    }
   };
 
-  // Alterna la selecci贸n de un accesorio
-  const handleToggleAccessory = (accessory) => {
-    setForm(prev => {
-      const isSelected = prev.accessories.includes(accessory);
-      const updatedAccessories = isSelected
-        ? prev.accessories.filter(item => item !== accessory)
-        : [...prev.accessories, accessory];
-      return { ...prev, accessories: updatedAccessories };
-    });
-  };
-
-  const handleClose = () => {
-    setForm(INITIAL_STATE);
-    onClose();
+  const handleAddCustomAccessory = (e) => {
+    e.preventDefault();
+    if (customAccessory.trim() && !selectedAccessories.includes(customAccessory.trim())) {
+      setSelectedAccessories([...selectedAccessories, customAccessory.trim()]);
+      setCustomAccessory("");
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Validaciones b谩sicas requeridas
-    if (!form.clientName.trim() || !form.clientPhone.trim() || !form.brand.trim() || !form.model.trim() || !form.serialNumber.trim()) {
-      return;
-    }
-
-    // Generaci贸n de un ID 煤nico y aleatorio de OT para este paso (ej: OT-1482)
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newId = `OT-${randomNum}`;
-
-    // Construcci贸n del objeto de orden de trabajo seg煤n requerimientos del Paso 3
-    const newWorkOrder = {
-      id: newId,
-      clientName: form.clientName.trim(),
-      clientPhone: form.clientPhone.trim(),
-      brand: form.brand.trim(),
-      model: form.model.trim(),
-      serialNumber: form.serialNumber.trim(),
-      equipmentType: form.equipmentType,
-      equipmentName: `${form.equipmentType} ${form.brand.trim()} ${form.model.trim()}`,
-      priority: form.priority,
-      status: 'INGRESO', // Estado inicial por defecto
-      entryDate: new Date().toISOString().split('T')[0], // Fecha actual YYYY-MM-DD
-      accessories: form.accessories,
-      cosmeticCondition: form.cosmeticCondition.trim(),
-      problemDescription: 'Ingreso inicial para diagn贸stico.',
-      diagnosis: '',
-      solution: '',
-      cost: 0,
+    const newOrder = {
+      ...formData,
+      status: "INGRESADO",
+      entryDate: new Date().toISOString().split("T")[0],
+      accessories: selectedAccessories,
       spareParts: []
     };
 
-    onSave(newWorkOrder);
-    handleClose();
+    saveWorkOrder(newOrder);
+    if (onSave) onSave();
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      {/* Backdrop oscuro con desenfoque / glassmorphism */}
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-        onClick={handleClose}
-      />
-
-      {/* Caja del Modal */}
-      <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-10 my-8">
-        
-        {/* Encabezado */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-            <h2 className="text-lg font-bold text-zinc-100 tracking-wide uppercase">
-              Ingreso de Nuevo Equipo (Alta OT)
-            </h2>
+            <Wrench className="w-6 h-6 text-indigo-600" />
+            <h2 className="text-xl font-bold text-slate-800">Nueva Orden de Trabajo</h2>
           </div>
-          <button 
-            type="button" 
-            onClick={handleClose}
-            className="text-zinc-400 hover:text-zinc-100 p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
-            title="Cerrar modal"
-          >
-            {/* Icono de Cierre (Lucide X) */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x">
-              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-            </svg>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
-        {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar text-zinc-300">
-          
-          {/* SECCI脫N 1: DATOS DEL CLIENTE */}
-          <div>
-            <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-3">
-              1. Informaci贸n del Cliente
-            </h3>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Datos del Cliente</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Nombre o Cl铆nica / Centro <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  name="clientName"
-                  list="existing-clients"
-                  required
-                  value={form.clientName}
-                  onChange={handleChange}
-                  placeholder="Ej: Est茅tica Bella Express / Dra. Luc铆a"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-                <datalist id="existing-clients">
-                  {uniqueClients.map(client => (
-                    <option key={client.name} value={client.name} />
-                  ))}
-                </datalist>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+                <div className="relative">
+                  <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={formData.clientName}
+                    onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Ej. Juan P閞ez"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Tel茅fono de WhatsApp <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="tel" 
-                  name="clientPhone"
-                  required
-                  value={form.clientPhone}
-                  onChange={handleChange}
-                  placeholder="Ej: +54 11 9876-5432"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tel閒ono</label>
+                <div className="relative">
+                  <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="tel"
+                    required
+                    value={formData.clientPhone}
+                    onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Ej. +54 9 261..."
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <hr className="border-zinc-900" />
-
-          {/* SECCI脫N 2: DATOS DEL EQUIPO */}
-          <div>
-            <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-3">
-              2. Detalles del Equipo M茅dico/Est茅tico
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Datos del Equipo</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Tipo de Aparatolog铆a <span className="text-red-500">*</span>
-                </label>
-                <select 
-                  name="equipmentType"
-                  value={form.equipmentType}
-                  onChange={handleChange}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all cursor-pointer"
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Equipo</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.deviceType}
+                  onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Ej. Ec骻rafo, Balanza..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Marca / Modelo</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.brandModel}
+                  onChange={(e) => setFormData({ ...formData, brandModel: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Ej. Mindray DP-10"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">N鷐ero de Serie</label>
+                <input
+                  type="text"
+                  value={formData.serialNumber}
+                  onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  placeholder="N/S..."
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Falla Reportada</label>
+              <textarea
+                required
+                rows={3}
+                value={formData.issueDescription}
+                onChange={(e) => setFormData({ ...formData, issueDescription: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                placeholder="Describa la falla indicada por el cliente..."
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Accesorios Recibidos</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {COMMON_ACCESSORIES.map((item) => (
+                <label
+                  key={item}
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm cursor-pointer transition-colors ${
+                    selectedAccessories.includes(item)
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-700 font-medium"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
                 >
-                  <option value="Criolip贸lisis">Criolip贸lisis</option>
-                  <option value="L谩ser Diodo">L谩ser Diodo</option>
-                  <option value="Radiofrecuencia">Radiofrecuencia</option>
-                  <option value="Cavitador">Cavitador</option>
-                  <option value="Vacumterapia">Vacumterapia</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Marca <span className="text-red-500">*</span>
+                  <input
+                    type="checkbox"
+                    checked={selectedAccessories.includes(item)}
+                    onChange={() => handleAccessoryToggle(item)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  {item}
                 </label>
-                <input 
-                  type="text" 
-                  name="brand"
-                  required
-                  value={form.brand}
-                  onChange={handleChange}
-                  placeholder="Ej: Meditech, Alma Lasers"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Modelo <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  name="model"
-                  required
-                  value={form.model}
-                  onChange={handleChange}
-                  placeholder="Ej: IceSculpt 360, Accent Prime"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  N掳 de Serie <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  name="serialNumber"
-                  required
-                  value={form.serialNumber}
-                  onChange={handleChange}
-                  placeholder="Ej: SN-998811-CRIO"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-              </div>
+              ))}
             </div>
-          </div>
 
-          <hr className="border-zinc-900" />
-
-          {/* SECCI脫N 3: PRIORIDAD */}
-          <div>
-            <label className="block text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
-              3. Nivel de Prioridad de la Reparaci贸n
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {['BAJA', 'MEDIA', 'ALTA', 'URGENTE'].map((prio) => {
-                const isSelected = form.priority === prio;
-                let activeStyle = '';
-                if (isSelected) {
-                  if (prio === 'BAJA') activeStyle = 'bg-gray-800/80 text-gray-200 border-gray-600 ring-2 ring-gray-700/50';
-                  if (prio === 'MEDIA') activeStyle = 'bg-blue-900/50 text-blue-300 border-blue-700 ring-2 ring-blue-700/50';
-                  if (prio === 'ALTA') activeStyle = 'bg-amber-950/50 text-amber-300 border-amber-700 ring-2 ring-amber-700/50';
-                  if (prio === 'URGENTE') activeStyle = 'bg-red-950/60 text-red-200 border-red-700 ring-2 ring-red-700/50 font-semibold animate-pulse';
-                }
-                return (
-                  <button
-                    key={prio}
-                    type="button"
-                    onClick={() => setForm(prev => ({ ...prev, priority: prio }))}
-                    className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all text-center ${
-                      isSelected 
-                        ? activeStyle 
-                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    {prio}
-                  </button>
-                );
-              })}
+            {/* Input para agregar accesorios personalizados */}
+            <div className="mt-3 flex gap-2">
+              <input
+                type="text"
+                placeholder="Ingresar otro accesorio..."
+                value={customAccessory}
+                onChange={(e) => setCustomAccessory(e.target.value)}
+                className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomAccessory}
+                className="px-4 py-2 text-sm bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" /> Agregar
+              </button>
             </div>
+
+            {/* Muestra accesorios agregados que no corresponden a la lista est醤dar */}
+            {selectedAccessories.filter((a) => !COMMON_ACCESSORIES.includes(a)).length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {selectedAccessories
+                  .filter((a) => !COMMON_ACCESSORIES.includes(a))
+                  .map((custom) => (
+                    <span
+                      key={custom}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                    >
+                      {custom}
+                      <button
+                        type="button"
+                        onClick={() => handleAccessoryToggle(custom)}
+                        className="hover:text-indigo-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+            )}
           </div>
 
-          <hr className="border-zinc-900" />
-
-          {/* SECCI脫N 4: ACCESORIOS RECIBIDOS */}
-          <div>
-            <label className="block text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
-              4. Accesorios Recibidos
-            </label>
-            <p className="text-zinc-500 text-xs mb-3">
-              Selecciona todos los elementos y partes f铆sicas del equipo que ingresan al taller:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {AVAILABLE_ACCESSORIES.map((accessory) => {
-                const isSelected = form.accessories.includes(accessory);
-                return (
-                  <button
-                    key={accessory}
-                    type="button"
-                    onClick={() => handleToggleAccessory(accessory)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/60 ring-1 ring-indigo-500/30'
-                        : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800/50 text-zinc-400 hover:text-zinc-300'
-                    }`}
-                  >
-                    {isSelected ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
-                    )}
-                    {accessory}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              Guardar Orden
+            </button>
           </div>
-
-          <hr className="border-zinc-900" />
-
-          {/* SECCI脫N 5: INSPECCI脫N VISUAL / COSM脡TICA */}
-          <div>
-            <label className="block text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1.5">
-              5. Inspecci贸n Visual / Estado Cosm茅tico de Entrada
-            </label>
-            <p className="text-zinc-500 text-xs mb-3">
-              Describe marcas, rayones, desgaste del cableado, golpes visibles, perillas rotas, etc.
-            </p>
-            <textarea
-              name="cosmeticCondition"
-              rows="3"
-              value={form.cosmeticCondition}
-              onChange={handleChange}
-              placeholder="Ej: Gabinete con leves rayones en lateral derecho, cable de poder con encintado de protecci贸n, cabezal de criolip贸lisis con marcas de impacto en carcasa pl谩stica."
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none"
-            />
-          </div>
-
         </form>
-
-        {/* Acciones del pie de p谩gina */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-800 bg-zinc-900/30">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 rounded-lg transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={!form.clientName.trim() || !form.clientPhone.trim() || !form.brand.trim() || !form.model.trim() || !form.serialNumber.trim()}
-            onClick={handleSubmit}
-            className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed rounded-lg shadow-lg hover:shadow-indigo-500/20 shadow-indigo-600/10 transition-all duration-200"
-          >
-            Registrar Ingreso (OT)
-          </button>
-        </div>
-
       </div>
     </div>
   );
-}
+};
