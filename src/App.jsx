@@ -31,6 +31,18 @@ export default function App() {
   const [inventory, setInventory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Control de modales y paneles
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Estado de navegación y búsqueda
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [benchSubTab, setBenchSubTab] = useState('measurements');
+  const [filterQuery, setFilterQuery] = useState('');
+
+  // Filtros de estado en la pestaña de Órdenes
+  const [statusFilter, setStatusFilter] = useState('TODOS');
+
   // Carga inicial de datos desde Supabase
   useEffect(() => {
     const initData = async () => {
