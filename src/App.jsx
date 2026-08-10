@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logo from './components/logo laboratorio.jpeg';
 import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
@@ -230,10 +231,8 @@ export default function App() {
       <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-5 w-full sm:w-auto">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-cyan-500/20 animate-pulse">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-6 h-6 text-slate-950">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12M11.42 7.7a1.5 1.5 0 011.5 1.5v2.12m0 0a1.5 1.5 0 01-1.5 1.5h-2.12" />
-              </svg>
+            <div className="h-12 w-12 rounded-lg overflow-hidden flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <img src={logo} alt="Logo" className="h-full w-full object-cover" />
             </div>
             <div>
               <h1 className="text-xl font-black text-white tracking-wider flex items-center gap-1.5">

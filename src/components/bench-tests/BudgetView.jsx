@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { generateBudgetPDF } from '../../services/pdfService';
+import logo from '../logo laboratorio.jpeg';
 
 /**
  * Componente BudgetView de alta gama comercial e ingenieril.
@@ -179,7 +180,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
         grandTotal
       }
     };
-    await generateBudgetPDF(budgetOrder);
+    await generateBudgetPDF(budgetOrder, logo);
   };
 
   // --- WHATSAPP TEMPLATES ---

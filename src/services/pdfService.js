@@ -8,28 +8,42 @@ const TERMS_AND_CONDITIONS = [
   "TÉRMINOS Y CONDICIONES",
   "1- PLAZOS DE ASISTENCIA TÉCNICA: La Empresa dará cumplimiento a la solicitud de servicio dentro de un plazo estimado de hasta 10 (diez) días hábiles a partir de la fecha de ingreso del equipo. Dicho lapso quedará sujeto a la disponibilidad de repuestos en el mercado y/o a la provisión de la información técnica del producto por parte del fabricante.",
   "2- RETIRO Y GUARDA: En caso de inexistencia de repuestos o por razones ajenas a la firma, se notificará al Cliente al momento de presupuestar. El equipo deberá ser retirado en un plazo máximo de 10 (diez) días hábiles posteriores a la fecha prevista de entrega. Vencido dicho término, La Empresa se deslindará de toda responsabilidad civil o penal por conceptos de robo, hurto, destrucción o daños que afecten al bien.",
-  "3- GARANTÍA DEL SERVICIO: Las reparaciones cuentan con una garantía limitada de 90 (noventa) días. En caso de sustitución de componentes de hardware, la garantía será única y exclusivamente la otorgada por el fabricante del repuesto.",
-  "4- PAGO Y ABANDONO: Los equipos se entregan únicamente contra pago efectivo. Independientemente del resultado del diagnóstico, el bien quedará bajo el régimen de guarda tras la notificación de disponibilidad, devengando un cargo diario de $1.000. Transcurridos 90 días sin ser retirado, se configurará la condición de ABANDONO. Pasados los 120 días, el titular perderá todo derecho a reclamo o indemnización (Art. 2525 y 2526 CCyCN).",
-  "5- CONDICIONES DE ENTREGA: La restitución de los equipos se efectuará únicamente contra la cancelación total de los importes facturados (diagnóstico, mano de obra, repuestos o guarda), restando el importe abonado al momento de la entrega inicial.",
-  "6- EXONERACIÓN DE RESPONSABILIDAD: La Empresa no asume responsabilidad por la procedencia de los bienes recibidos. Asimismo, queda exenta de responder por la pérdida de los bienes ante casos fortuitos, fuerza mayor, siniestros o desastres naturales.",
-  "7- LOGÍSTICA: Los costos de traslados, envíos y/o retiros correrán por cuenta y riesgo exclusivo del Cliente.",
-  "8- CARGOS OPERATIVOS: Los servicios de diagnóstico, análisis de fallas y cotización constituyen tareas con cargo, cuyo valor actual es de $20.000, exceptuando casos cubiertos por garantía."
+  "3- GARANTÍA DEL SERVICIO: Las reparaciones cuentan con una garantía limitada de 90 (treinta) meses. En caso de sustitución de componentes de hardware, la garantía será única y exclusivamente la otorgada por el fabricante del repuesto.",
+  "4- PAGO: Los equipos se entregan únicamente sin excepción efectiva del estado de disponibilidad del equipo (vía WhatsApp o llamada), e independientemente del resultado del diagnóstico, el bien quedará bajo el régimen de guarda, devengando un cargo diario de $1.000 (mil pesos). Dicho concepto se adicionará al costo técnico y deberá cancelarse al retirar el equipo. Transcurridos 90 días sin ser retirado, se configurará la condición de ABANDONO. Pasados los 120 días, el titular perderá todo derecho a reclamo o indemnización, conforme a lo establecido en los Artículos 2525 y 2526 del Código Civil y Comercial de la Nación.",
+  "5- CONDICIONES DE ENTREGA: La restitución de los productos y/o equipos se efectuará únicamente contra la cancelación total de los importes facturados por diagnósticos, mano de obra, repuestos o guarda. restando el importe abonado en el momento de la entrega del equipo para su revisión y reparación.",
+  "6- EXONERACIÓN DE RESPONSABILIDAD: La Empresa no asume responsabilidad alguna por la procedencia u origen de los bienes recibidos, recayendo la responsabilidad jurídica exclusivamente sobre el firmante de la orden. Asimismo, queda exenta de responder por la pérdida de los bienes ante casos fortuitos, fuerza mayor, siniestros o desastres naturales.",
+  "7- LOGÍSTICA: Los costos inherentes a traslados, envíos y/o retiros correrán por cuenta, cargo y riesgo exclusivo del Cliente.",
+  "8- CARGOS OPERATIVOS: Los servicios de diagnóstico, análisis de fallas, cotizaciones de componentes y gestión de fletes constituyen tareas con cargo, cuyo valor final quedará determinado en la orden de trabajo que al día de la fecha es de $20.000, quedando exceptuados únicamente los casos cubiertos por la garantía ."
 ];
 
 /**
  * Función auxiliar para renderizar términos y condiciones en letra chica.
  */
 const renderTermsAndConditions = (doc, startY) => {
-  doc.setFontSize(5.5);
+  doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
   let currentY = startY;
+
+  // Si estamos muy abajo, agregar página
+  if (currentY > 230) {
+    doc.addPage();
+    currentY = 20;
+  }
+
   TERMS_AND_CONDITIONS.forEach((line, index) => {
     if (index === 0) doc.setFont("helvetica", "bold");
     else doc.setFont("helvetica", "normal");
 
     const lines = doc.splitTextToSize(line, 180);
+
+    // Verificar si las líneas caben en el resto de la página
+    if (currentY + (lines.length * 3) > 280) {
+      doc.addPage();
+      currentY = 20;
+    }
+
     doc.text(lines, 15, currentY);
-    currentY += (lines.length * 3);
+    currentY += (lines.length * 3.5);
   });
   return currentY;
 };
@@ -194,12 +208,23 @@ export const generateQCCertificate = (order) => {
 /**
  * Genera el comprobante de ingreso (recepción) con firma del cliente.
  */
-export const generateEntryReceipt = async (order, clientSignatureBase64) => {
+export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo) => {
   const settings = loadSettings();
   const doc = new jsPDF();
 
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 40, 'F');
+
+  // Logo
+  const logoToUse = appLogo || settings.logo;
+  if (logoToUse) {
+    try {
+      doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25);
+    } catch (e) {
+      console.error("Error al añadir logo al PDF de ingreso:", e);
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -252,12 +277,23 @@ export const generateEntryReceipt = async (order, clientSignatureBase64) => {
 /**
  * Genera el PDF del presupuesto para compartir.
  */
-export const generateBudgetPDF = async (order) => {
+export const generateBudgetPDF = async (order, appLogo) => {
   const settings = loadSettings();
   const doc = new jsPDF();
 
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 35, 'F');
+
+  // Logo
+  const logoToUse = appLogo || settings.logo;
+  if (logoToUse) {
+    try {
+      doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25);
+    } catch (e) {
+      console.error("Error al añadir logo al PDF de presupuesto:", e);
+    }
+  }
+
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
