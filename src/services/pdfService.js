@@ -4,6 +4,36 @@ import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
+const TERMS_AND_CONDITIONS = [
+  "TÉRMINOS Y CONDICIONES",
+  "1- PLAZOS DE ASISTENCIA TÉCNICA: La Empresa dará cumplimiento a la solicitud de servicio dentro de un plazo estimado de hasta 10 (diez) días hábiles a partir de la fecha de ingreso del equipo. Dicho lapso quedará sujeto a la disponibilidad de repuestos en el mercado y/o a la provisión de la información técnica del producto por parte del fabricante.",
+  "2- RETIRO Y GUARDA: En caso de inexistencia de repuestos o por razones ajenas a la firma, se notificará al Cliente al momento de presupuestar. El equipo deberá ser retirado en un plazo máximo de 10 (diez) días hábiles posteriores a la fecha prevista de entrega. Vencido dicho término, La Empresa se deslindará de toda responsabilidad civil o penal por conceptos de robo, hurto, destrucción o daños que afecten al bien.",
+  "3- GARANTÍA DEL SERVICIO: Las reparaciones cuentan con una garantía limitada de 90 (noventa) días. En caso de sustitución de componentes de hardware, la garantía será única y exclusivamente la otorgada por el fabricante del repuesto.",
+  "4- PAGO Y ABANDONO: Los equipos se entregan únicamente contra pago efectivo. Independientemente del resultado del diagnóstico, el bien quedará bajo el régimen de guarda tras la notificación de disponibilidad, devengando un cargo diario de $1.000. Transcurridos 90 días sin ser retirado, se configurará la condición de ABANDONO. Pasados los 120 días, el titular perderá todo derecho a reclamo o indemnización (Art. 2525 y 2526 CCyCN).",
+  "5- CONDICIONES DE ENTREGA: La restitución de los equipos se efectuará únicamente contra la cancelación total de los importes facturados (diagnóstico, mano de obra, repuestos o guarda), restando el importe abonado al momento de la entrega inicial.",
+  "6- EXONERACIÓN DE RESPONSABILIDAD: La Empresa no asume responsabilidad por la procedencia de los bienes recibidos. Asimismo, queda exenta de responder por la pérdida de los bienes ante casos fortuitos, fuerza mayor, siniestros o desastres naturales.",
+  "7- LOGÍSTICA: Los costos de traslados, envíos y/o retiros correrán por cuenta y riesgo exclusivo del Cliente.",
+  "8- CARGOS OPERATIVOS: Los servicios de diagnóstico, análisis de fallas y cotización constituyen tareas con cargo, cuyo valor actual es de $20.000, exceptuando casos cubiertos por garantía."
+];
+
+/**
+ * Función auxiliar para renderizar términos y condiciones en letra chica.
+ */
+const renderTermsAndConditions = (doc, startY) => {
+  doc.setFontSize(5.5);
+  doc.setTextColor(100, 116, 139);
+  let currentY = startY;
+  TERMS_AND_CONDITIONS.forEach((line, index) => {
+    if (index === 0) doc.setFont("helvetica", "bold");
+    else doc.setFont("helvetica", "normal");
+
+    const lines = doc.splitTextToSize(line, 180);
+    doc.text(lines, 15, currentY);
+    currentY += (lines.length * 3);
+  });
+  return currentY;
+};
+
 /**
  * Función auxiliar para compartir un PDF en móviles o descargarlo en web.
  */
@@ -203,13 +233,10 @@ export const generateEntryReceipt = async (order, clientSignatureBase64) => {
     columnStyles: { 0: { fontStyle: 'bold', width: 40 } }
   });
 
-  const finalY = doc.lastAutoTable.finalY + 20;
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  const terms = "El cliente declara que el equipo se entrega con los accesorios detallados. El laboratorio no se responsabiliza por pérdida de datos. Todo equipo reparado y no retirado a los 30 días se considera abandonado.";
-  doc.text(doc.splitTextToSize(terms, 180), 15, finalY);
+  const finalY = doc.lastAutoTable.finalY + 12;
+  renderTermsAndConditions(doc, finalY);
 
-  const sigY = finalY + 40;
+  const sigY = 255;
   doc.line(30, sigY, 85, sigY);
   doc.line(125, sigY, 180, sigY);
   doc.text("Firma del Cliente", 45, sigY + 5);
@@ -259,7 +286,9 @@ export const generateBudgetPDF = async (order) => {
   const total = (order.sparePartsAssigned?.reduce((acc, p) => acc + (p.qty * p.price), 0) || 0) + (order.laborCost || 0);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL PRESUPUESTO: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 15);
+  doc.text(`TOTAL PRESUPUESTO: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 12);
+
+  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 22);
 
   saveOrSharePDF(doc, `Presupuesto_${order.id}.pdf`);
 };
