@@ -62,6 +62,9 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
   const [customAccessory, setCustomAccessory] = useState("");
   const [images, setImages] = useState([]);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [signatureType, setSignatureModalType] = useState("CLIENT"); // "CLIENT" | "TECHNICIAN"
+  const [clientSignature, setClientSignature] = useState(null);
+  const [techSignature, setTechSignature] = useState(null);
   const [tempOrderData, setTempOrderData] = useState(null);
 
   if (!isOpen) return null;
@@ -123,8 +126,13 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
       return;
     }
 
+    // Generar un ID único tipo OT-1234 si no existe
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const newId = `OT-${randomNum}`;
+
     const newOrder = {
       ...formData,
+      id: newId,
       deviceType: finalDeviceType,
       brandModel: finalBrandModel,
       status: "INGRESADO",
@@ -137,41 +145,65 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
     delete newOrder.customDeviceType;
     delete newOrder.customBrandModel;
 
-    // Abrimos el modal de firma antes de guardar definitivamente
+    // Preparar datos temporales y abrir primera firma (Cliente)
     setTempOrderData(newOrder);
+    setSignatureModalType("CLIENT");
     setIsSignatureModalOpen(true);
   };
 
-  const handleFinishWithSignature = async (signatureBase64) => {
-    try {
-      const orderToSave = { ...tempOrderData, clientSignature: signatureBase64 };
-      // Notar el await aquí para Supabase
-      await saveWorkOrder(orderToSave);
+  const handleSignatureComplete = (signatureBase64) => {
+    if (signatureType === "CLIENT") {
+      setClientSignature(signatureBase64);
+      // Pasar a la firma del Técnico
+      setSignatureModalType("TECHNICIAN");
+      setIsSignatureModalOpen(true);
+    } else {
+      setTechSignature(signatureBase64);
+      // Finalizar tras firma del técnico
+      finishOrder(clientSignature, signatureBase64);
+    }
+  };
 
-      // Generar y compartir el comprobante PDF
-      await generateEntryReceipt(orderToSave, signatureBase64, logo);
+  const finishOrder = async (cSig, tSig) => {
+    try {
+      const orderToSave = {
+        ...tempOrderData,
+        clientSignature: cSig,
+        techSignature: tSig
+      };
+      await saveWorkOrder(orderToSave);
 
       if (onSave) onSave(orderToSave);
       onClose();
-      
-      // Reset
-      setImages([]);
-      setSelectedAccessories([]);
-      setFormData({
-        clientName: "",
-        clientPhone: "",
-        deviceType: "",
-        customDeviceType: "",
-        brandModel: "",
-        customBrandModel: "",
-        serialNumber: "",
-        issueDescription: "",
-        estimatedBudget: "",
-        priority: "MEDIA"
-      });
-      setTempOrderData(null);
+      resetForm();
     } catch (err) {
       alert("Error al procesar el ingreso: " + err.message);
+    }
+  };
+
+  const resetForm = () => {
+    setImages([]);
+    setSelectedAccessories([]);
+    setClientSignature(null);
+    setTechSignature(null);
+    setFormData({
+      clientName: "",
+      clientPhone: "",
+      deviceType: "",
+      customDeviceType: "",
+      brandModel: "",
+      customBrandModel: "",
+      serialNumber: "",
+      issueDescription: "",
+      estimatedBudget: "",
+      priority: "MEDIA"
+    });
+    setTempOrderData(null);
+  };
+
+  const handleSkipSignatures = async () => {
+    if (window.confirm("¿Desea guardar el ingreso sin firmas?")) {
+      finishOrder(null, null);
     }
   };
 
@@ -434,32 +466,39 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
             </div>
 
             {/* ACCIONES */}
-            <div className="flex justify-end items-center gap-4 pt-6 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-10 py-3 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 rounded-xl shadow-xl shadow-cyan-500/10 active:scale-95 transition-all uppercase tracking-[0.15em] flex items-center gap-2"
-              >
-                <FileCheck className="w-4 h-4" /> Guardar Ingreso
-              </button>
-            </div>
+          <div className="flex justify-end items-center gap-4 pt-6 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSkipSignatures}
+              className="px-4 py-2 text-[10px] font-bold text-amber-500 hover:text-amber-400 transition-colors uppercase"
+            >
+              Guardar sin Firmas
+            </button>
+            <button
+              type="submit"
+              className="px-10 py-3 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 rounded-xl shadow-xl shadow-cyan-500/10 active:scale-95 transition-all uppercase tracking-[0.15em] flex items-center gap-2"
+            >
+              <FileCheck className="w-4 h-4" /> Continuar a Firmas
+            </button>
+          </div>
 
-          </form>
-        </div>
-
-        <SignatureModal
-          isOpen={isSignatureModalOpen}
-          onClose={() => setIsSignatureModalOpen(false)}
-          onSave={handleFinishWithSignature}
-          title="Firma de Recepción (Cliente)"
-        />
+        </form>
       </div>
+
+      <SignatureModal
+        isOpen={isSignatureModalOpen}
+        onClose={() => setIsSignatureModalOpen(false)}
+        onSave={handleSignatureComplete}
+        title={signatureType === "CLIENT" ? "Firma de Recepción (Cliente)" : "Firma de Responsable (LabRepair)"}
+      />
+    </div>
     </>
   );
 };

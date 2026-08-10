@@ -199,7 +199,13 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
     try { doc.addImage(clientSignatureBase64, 'PNG', 35, sigY - 25, 40, 20); } catch (e) {}
   }
 
-  saveOrSharePDF(doc, `Ingreso_${order.id}.pdf`);
+  // Firma del Técnico (si existe)
+  if (order.techSignature) {
+    try { doc.addImage(order.techSignature, 'PNG', 130, sigY - 25, 40, 20); } catch (e) {}
+  }
+
+  const sanitizedClient = (order.clientName || "Cliente").replace(/\s+/g, '_');
+  saveOrSharePDF(doc, `Ingreso_${order.id}_${sanitizedClient}.pdf`);
 };
 
 export const generateBudgetPDF = async (order, appLogo) => {
@@ -234,7 +240,8 @@ export const generateBudgetPDF = async (order, appLogo) => {
 
   renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 25);
 
-  saveOrSharePDF(doc, `Presupuesto_${order.id}.pdf`);
+  const sanitizedClient = (order.clientName || "Cliente").replace(/\s+/g, '_');
+  saveOrSharePDF(doc, `Presupuesto_${order.id}_${sanitizedClient}.pdf`);
 };
 
 export const exportInventoryToPDF = (inventory) => {
