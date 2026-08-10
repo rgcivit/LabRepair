@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import logo from './components/logo laboratorio.jpeg';
+import { supabase } from './services/supabaseClient';
 import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
@@ -8,7 +9,7 @@ import BudgetView from './components/bench-tests/BudgetView';
 import InventoryView from './components/inventory/InventoryView';
 import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
-import { generateQCCertificate, exportWorkOrdersToPDF } from './services/pdfService';
+import { generateQCCertificate, exportWorkOrdersToPDF, generateEntryReceipt } from './services/pdfService';
 
 // Servicios de autenticación y vista de login
 import { getCurrentUser, logout, changePassword } from './services/authService';
@@ -44,7 +45,7 @@ export default function App() {
   // Filtros de estado en la pestaña de Órdenes
   const [statusFilter, setStatusFilter] = useState('TODOS');
 
-  // Carga inicial de datos desde Supabase
+  // Carga inicial y suscripción en tiempo real
   useEffect(() => {
     const initData = async () => {
       setIsLoading(true);
@@ -54,7 +55,21 @@ export default function App() {
       setInventory(fetchedInventory);
       setIsLoading(false);
     };
+
     initData();
+
+    // Suscripción en tiempo real a Supabase
+    const ordersSubscription = supabase
+      .channel('work_orders_realtime')
+      .on('postgres_changes', { event: '*', table: 'work_orders', schema: 'public' }, () => {
+        console.log("Cambio detectado en la nube, refrescando...");
+        refreshData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersSubscription);
+    };
   }, []);
 
   // Sincroniza datos en tiempo real
@@ -606,9 +621,19 @@ export default function App() {
                                   onClick={() => handleViewDiagnostic(order)}
                                   className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
                                 >
-                                  <span>Ver Diagnóstico</span>
+                                  <span>Diagnóstico</span>
                                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                  </svg>
+                                </button>
+
+                                <button
+                                  onClick={() => generateEntryReceipt(order, order.clientSignature, logo)}
+                                  className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-lg transition-colors"
+                                  title="Descargar Comprobante de Ingreso"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                   </svg>
                                 </button>
 

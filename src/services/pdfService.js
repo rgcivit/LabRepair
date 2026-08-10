@@ -16,62 +16,6 @@ const TERMS_AND_CONDITIONS = [
   "8- CARGOS OPERATIVOS: Los servicios de diagnóstico, análisis de fallas, cotizaciones de componentes y gestión de fletes constituyen tareas con cargo, cuyo valor final quedará determinado en la orden de trabajo que al día de la fecha es de $20.000, quedando exceptuados únicamente los casos cubiertos por la garantía ."
 ];
 
-const renderTermsAndConditions = (doc, startY) => {
-  doc.setFontSize(5);
-  doc.setTextColor(100, 116, 139);
-  let currentY = startY;
-
-  if (currentY > 220) {
-    doc.addPage();
-    currentY = 20;
-  }
-
-  TERMS_AND_CONDITIONS.forEach((line, index) => {
-    if (index === 0) doc.setFont("helvetica", "bold");
-    else doc.setFont("helvetica", "normal");
-
-    const lines = doc.splitTextToSize(line, 180);
-    if (currentY + (lines.length * 3) > 285) {
-      doc.addPage();
-      currentY = 20;
-    }
-    doc.text(lines, 15, currentY);
-    currentY += (lines.length * 2.8) + 1;
-  });
-  return currentY;
-};
-
-const saveOrSharePDF = async (doc, filename) => {
-  const pdfOutput = doc.output('datauristring');
-  const sanitizedFilename = filename.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
-
-  if (Capacitor.isNativePlatform()) {
-    try {
-      const base64Data = pdfOutput.split(',')[1];
-      await Filesystem.writeFile({
-        path: sanitizedFilename,
-        data: base64Data,
-        directory: Directory.Cache
-      });
-      const fileUri = await Filesystem.getUri({
-        directory: Directory.Cache,
-        path: sanitizedFilename
-      });
-      await Share.share({
-        title: 'Documento LabRepair',
-        text: `Se adjunta ${sanitizedFilename}`,
-        url: fileUri.uri,
-        dialogTitle: 'Compartir con el cliente'
-      });
-    } catch (error) {
-      console.error('Error al compartir PDF:', error);
-      doc.save(sanitizedFilename);
-    }
-  } else {
-    doc.save(sanitizedFilename);
-  }
-};
-
 const loadSettings = () => {
   let settings = {
     companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
@@ -90,120 +34,54 @@ const loadSettings = () => {
   return settings;
 };
 
-export const generateQCCertificate = (order) => {
-  if (!order) return;
-  const settings = loadSettings();
-  const doc = new jsPDF();
-  const bench = order.benchTest || {};
-
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 210, 38, 'F');
-  doc.setFillColor(6, 182, 212);
-  doc.rect(0, 38, 210, 2, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text(settings.companyName.toUpperCase(), 15, 16);
-  doc.setFontSize(10.5);
-  doc.text("CERTIFICADO DE CONTROL DE CALIDAD (QC OK)", 15, 31);
-
-  if (settings.logo) {
-    try { doc.addImage(settings.logo, 'PNG', 165, 6, 30, 16); } catch (e) {}
-  }
-
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(11);
-  doc.text("INFORMACIÓN DE LA ORDEN", 15, 52);
-  doc.line(15, 55, 195, 55);
-
-  const data = [
-    ["OT ID:", order.id, "Fecha:", new Date().toLocaleDateString('es-AR')],
-    ["Cliente:", order.clientName, "Equipo:", order.equipmentType || order.deviceType],
-    ["Marca/Mod:", `${order.brand || ""} ${order.model || ""}`.trim() || order.brandModel, "S/N:", order.serialNumber]
-  ];
-
-  doc.autoTable({ startY: 58, body: data, theme: 'plain', styles: { fontSize: 8.5 } });
-
-  const tableColumns = ["Parámetro Crítico", "Medición", "Unidad", "Estado"];
-  const tableRows = [
-    ["Flujo Refrigerante", bench.coolantFlow || "N/D", "L/min", "Óptimo"],
-    ["Temperatura Cabezal", bench.peltierTemp || "N/D", "°C", "Estable"],
-    ["Presión Vacío", bench.vacuumPressure || "N/D", "bar", "Nominal"],
-    ["Seguridad Eléctrica", order.qcPassed ? "APROBADO" : "OBSERVADO", "Resultado", "APTO"]
-  ];
-
-  doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 10,
-    head: [tableColumns],
-    body: tableRows,
-    theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59] }
+const renderTermsAndConditions = (doc, startY) => {
+  doc.setFontSize(5);
+  doc.setTextColor(100, 116, 139);
+  let currentY = startY;
+  if (currentY > 220) { doc.addPage(); currentY = 20; }
+  TERMS_AND_CONDITIONS.forEach((line, index) => {
+    doc.setFont("helvetica", index === 0 ? "bold" : "normal");
+    const lines = doc.splitTextToSize(line, 180);
+    if (currentY + (lines.length * 3) > 285) { doc.addPage(); currentY = 20; }
+    doc.text(lines, 15, currentY);
+    currentY += (lines.length * 2.8) + 1;
   });
+  return currentY;
+};
 
-  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 15);
-
-  const sigY = 265;
-  if (doc.internal.getVerticalCoordinatePage(sigY) > 280) { doc.addPage(); }
-  doc.line(30, 265, 85, 265);
-  doc.line(125, 265, 180, 265);
-  doc.text(settings.technicianName, 40, 270);
-  doc.text("Firma y Sello Lab", 135, 270);
-
-  saveOrSharePDF(doc, `${order.id}_Certificado_QC.pdf`);
+const saveOrSharePDF = async (doc, filename) => {
+  const pdfOutput = doc.output('datauristring');
+  const sanitizedFilename = filename.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const base64Data = pdfOutput.split(',')[1];
+      await Filesystem.writeFile({ path: sanitizedFilename, data: base64Data, directory: Directory.Cache });
+      const fileUri = await Filesystem.getUri({ directory: Directory.Cache, path: sanitizedFilename });
+      await Share.share({ title: 'Documento LabRepair', text: `Adjunto ${sanitizedFilename}`, url: fileUri.uri, dialogTitle: 'Compartir' });
+    } catch (e) { doc.save(sanitizedFilename); }
+  } else { doc.save(sanitizedFilename); }
 };
 
 export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 210, 40, 'F');
-
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 40, 'F');
   const logoToUse = appLogo || settings.logo;
-  if (logoToUse) {
-    try { doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25); } catch (e) {}
-  }
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.text(settings.companyName.toUpperCase(), 15, 18);
-  doc.setFontSize(9);
-  doc.text("COMPROBANTE DE RECEPCIÓN TÉCNICA", 15, 25);
-
-  doc.setTextColor(30, 41, 59);
-  doc.setFontSize(10);
-  doc.text("DETALLE DE RECEPCIÓN", 15, 50);
-  doc.line(15, 52, 195, 52);
-
+  if (logoToUse) { try { doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25); } catch (e) {} }
+  doc.setTextColor(255, 255, 255); doc.setFontSize(16); doc.text(settings.companyName.toUpperCase(), 15, 18);
+  doc.setFontSize(9); doc.text("COMPROBANTE DE RECEPCIÓN TÉCNICA E INGRESO", 15, 25);
+  doc.setTextColor(30, 41, 59); doc.setFontSize(10); doc.text("DETALLE DE RECEPCIÓN", 15, 50); doc.line(15, 52, 195, 52);
   const data = [
-    ["OT ID:", order.id],
-    ["Fecha:", order.entryDate],
-    ["Cliente:", order.clientName],
-    ["Equipo:", `${order.deviceType} ${order.brandModel}`],
-    ["S/N:", order.serialNumber],
-    ["Falla:", order.issueDescription],
-    ["Accesorios:", order.accessories?.join(", ") || "Ninguno"]
+    ["OT ID:", order.id], ["Fecha:", order.entryDate], ["Cliente:", order.clientName], ["Tel:", order.clientPhone],
+    ["Equipo:", order.deviceType], ["Marca/Mod:", order.brandModel], ["S/N:", order.serialNumber],
+    ["Falla:", order.issueDescription], ["Accesorios:", order.accessories?.join(", ") || "Ninguno"]
   ];
-
   doc.autoTable({ startY: 55, body: data, theme: 'plain', styles: { fontSize: 9 }, columnStyles: { 0: { fontStyle: 'bold', width: 40 } } });
-
   renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 12);
-
-  const sigY = 265;
-  doc.line(30, sigY, 85, sigY);
-  doc.line(125, sigY, 180, sigY);
-  doc.text("Firma del Cliente", 45, sigY + 5);
-  doc.text("Recibido por LabRepair", 135, sigY + 5);
-
-  if (clientSignatureBase64) {
-    try { doc.addImage(clientSignatureBase64, 'PNG', 35, sigY - 25, 40, 20); } catch (e) {}
-  }
-
-  // Firma del Técnico (si existe)
-  if (order.techSignature) {
-    try { doc.addImage(order.techSignature, 'PNG', 130, sigY - 25, 40, 20); } catch (e) {}
-  }
-
+  const sigY = 265; doc.line(30, sigY, 85, sigY); doc.line(125, sigY, 180, sigY);
+  doc.text("Firma Cliente", 45, sigY + 5); doc.text("Recibido por LabRepair", 135, sigY + 5);
+  if (clientSignatureBase64) { try { doc.addImage(clientSignatureBase64, 'PNG', 35, sigY - 25, 40, 20); } catch (e) {} }
+  if (order.techSignature) { try { doc.addImage(order.techSignature, 'PNG', 130, sigY - 25, 40, 20); } catch (e) {} }
   const sanitizedClient = (order.clientName || "Cliente").replace(/\s+/g, '_');
   saveOrSharePDF(doc, `Ingreso_${order.id}_${sanitizedClient}.pdf`);
 };
@@ -211,86 +89,103 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
 export const generateBudgetPDF = async (order, appLogo) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 210, 35, 'F');
-
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 35, 'F');
   const logoToUse = appLogo || settings.logo;
-  if (logoToUse) {
-    try { doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25); } catch (e) {}
-  }
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
-  doc.text("PRESUPUESTO DE SERVICIO TÉCNICO", 15, 20);
-
-  doc.setTextColor(30, 41, 59);
-  doc.text(`Cliente: ${order.clientName}`, 15, 45);
-  doc.setFontSize(9);
-  doc.text(doc.splitTextToSize(`Diagnóstico: ${order.diagnosis || "Control general."}`, 180), 15, 52);
-
+  if (logoToUse) { try { doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25); } catch (e) {} }
+  doc.setTextColor(255, 255, 255); doc.setFontSize(14); doc.text("PRESUPUESTO DE SERVICIO TÉCNICO", 15, 20);
+  doc.setTextColor(30, 41, 59); doc.text(`Cliente: ${order.clientName}`, 15, 45);
+  doc.setFontSize(9); doc.text(doc.splitTextToSize(`Diagnóstico: ${order.diagnosis || "Control general."}`, 180), 15, 52);
   const items = order.sparePartsAssigned?.map(p => [p.name, p.qty, `$${p.price.toLocaleString()}`, `$${(p.qty * p.price).toLocaleString()}`]) || [];
   items.push(["Mano de Obra", "1", `$${(order.laborCost || 0).toLocaleString()}`, `$${(order.laborCost || 0).toLocaleString()}`]);
-
   doc.autoTable({ startY: 65, head: [["Descripción", "Cant.", "P.Unit", "Subtotal"]], body: items, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
-
   const total = (order.sparePartsAssigned?.reduce((acc, p) => acc + (p.qty * p.price), 0) || 0) + (order.laborCost || 0);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 15);
-
+  doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text(`TOTAL: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 15);
   renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 25);
-
   const sanitizedClient = (order.clientName || "Cliente").replace(/\s+/g, '_');
   saveOrSharePDF(doc, `Presupuesto_${order.id}_${sanitizedClient}.pdf`);
-};
-
-export const exportInventoryToPDF = (inventory) => {
-  const settings = loadSettings();
-  const doc = new jsPDF();
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 210, 40, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.text(settings.companyName.toUpperCase(), 15, 18);
-  doc.setFontSize(9);
-  doc.text("REPORTE DE INVENTARIO", 15, 25);
-
-  const columns = ["ID", "Insumo", "Stock", "Precio"];
-  const rows = inventory.map(item => [item.id, item.name, item.stock, `$${item.price}`]);
-  doc.autoTable({ startY: 45, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
-
-  saveOrSharePDF(doc, "Inventario_LabRepair.pdf");
 };
 
 export const exportWorkOrdersToPDF = (orders) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 210, 40, 'F');
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 40, 'F');
+
+  if (settings.logo) {
+    try { doc.addImage(settings.logo, 'PNG', 170, 5, 25, 25); } catch (e) {}
+  }
+
   doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
   doc.text(settings.companyName.toUpperCase(), 15, 18);
+
   doc.setFontSize(9);
-  doc.text("REPORTE DE ÓRDENES DE TRABAJO", 15, 25);
+  doc.text("REPORTE GENERAL DE ÓRDENES DE TRABAJO", 15, 25);
 
   const columns = ["ID", "Equipo", "Cliente", "Fecha", "Estado"];
   const rows = orders.map(o => [o.id, `${o.deviceType || o.equipmentName}`, o.clientName, o.entryDate, o.status]);
-  doc.autoTable({ startY: 45, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] }, styles: { fontSize: 8 } });
+
+  doc.autoTable({
+    startY: 45,
+    head: [columns],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor: [30, 41, 59] },
+    styles: { fontSize: 8 }
+  });
+
+  // Añadir términos al final del reporte general también por si acaso
+  const finalY = doc.lastAutoTable.finalY + 10;
+  if (finalY < 230) {
+      renderTermsAndConditions(doc, finalY);
+  }
+
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(settings.pdfFooter || "SISTEMA DE GESTIÓN LABREPAIR", 15, 285);
 
   saveOrSharePDF(doc, "Reporte_Ordenes_LabRepair.pdf");
+};
+
+export const exportInventoryToPDF = (inventory) => {
+  const settings = loadSettings();
+  const doc = new jsPDF();
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 40, 'F');
+  if (settings.logo) { try { doc.addImage(settings.logo, 'PNG', 170, 5, 25, 25); } catch (e) {} }
+  doc.setTextColor(255, 255, 255); doc.text(settings.companyName.toUpperCase(), 15, 18);
+  doc.setFontSize(9); doc.text("REPORTE DE INVENTARIO Y STOCK", 15, 25);
+  const columns = ["ID", "Insumo", "Stock", "Precio"];
+  const rows = inventory.map(item => [item.id, item.name, item.stock, `$${item.price}`]);
+  doc.autoTable({ startY: 45, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
+  saveOrSharePDF(doc, "Inventario_LabRepair.pdf");
+};
+
+export const generateQCCertificate = (order) => {
+  if (!order) return;
+  const settings = loadSettings();
+  const doc = new jsPDF();
+  const bench = order.benchTest || {};
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 38, 'F');
+  doc.setFillColor(6, 182, 212); doc.rect(0, 38, 210, 2, 'F');
+  if (settings.logo) { try { doc.addImage(settings.logo, 'PNG', 165, 6, 30, 16); } catch (e) {} }
+  doc.setTextColor(255, 255, 255); doc.setFontSize(12); doc.text(settings.companyName.toUpperCase(), 15, 16);
+  doc.setFontSize(10.5); doc.text("CERTIFICADO DE CONTROL DE CALIDAD (QC OK)", 15, 31);
+  const data = [["OT ID:", order.id, "Fecha:", new Date().toLocaleDateString('es-AR')], ["Cliente:", order.clientName, "Equipo:", order.equipmentType || order.deviceType], ["Marca/Mod:", `${order.brand || ""} ${order.model || ""}`.trim() || order.brandModel, "S/N:", order.serialNumber]];
+  doc.autoTable({ startY: 58, body: data, theme: 'plain', styles: { fontSize: 8.5 } });
+  const rows = [["Flujo Refrigerante", bench.coolantFlow || "N/D", "L/min", "Óptimo"], ["Temperatura Cabezal", bench.peltierTemp || "N/D", "°C", "Estable"], ["Presión Vacío", bench.vacuumPressure || "N/D", "bar", "Nominal"], ["Seguridad Eléctrica", order.qcPassed ? "APROBADO" : "OBSERVADO", "Resultado", "APTO"]];
+  doc.autoTable({ startY: doc.lastAutoTable.finalY + 10, head: [["Parámetro", "Medición", "Unidad", "Estado"]], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
+  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 15);
+  const sigY = 265; doc.line(30, sigY, 85, sigY); doc.line(125, sigY, 180, sigY);
+  doc.text(settings.technicianName, 40, sigY + 5); doc.text("Firma y Sello Lab", 135, sigY + 5);
+  saveOrSharePDF(doc, `${order.id}_Certificado_QC.pdf`);
 };
 
 export const exportSerialHistoryToPDF = (serialNumber, history) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-  doc.setFillColor(30, 41, 59);
-  doc.rect(0, 0, 210, 35, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.text(settings.companyName.toUpperCase(), 15, 18);
-  doc.setFontSize(9);
-  doc.text(`HISTORIAL S/N: ${serialNumber}`, 15, 25);
-
-  const columns = ["ID", "Fecha", "Falla", "Estado"];
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 35, 'F');
+  doc.setTextColor(255, 255, 255); doc.text(settings.companyName.toUpperCase(), 15, 18);
+  doc.setFontSize(9); doc.text(`HISTORIAL TÉCNICO S/N: ${serialNumber}`, 15, 25);
   const rows = history.map(o => [o.id, o.entryDate, o.reportedFailure || o.issueDescription || "N/D", o.status]);
-  doc.autoTable({ startY: 40, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
-
+  doc.autoTable({ startY: 40, head: [["ID", "Fecha", "Falla", "Estado"]], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
   saveOrSharePDF(doc, `Historial_${serialNumber}.pdf`);
 };

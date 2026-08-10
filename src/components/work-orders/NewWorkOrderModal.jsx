@@ -4,15 +4,12 @@ import { X, Wrench, User, Phone, Plus, Camera, Trash2, FileCheck } from "lucide-
 import { saveWorkOrder } from "../../services/storageService";
 import { generateEntryReceipt } from "../../services/pdfService";
 import SignatureModal from "../common/SignatureModal";
+import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 const COMMON_ACCESSORIES = [
-  "Cable de Poder",
-  "Pedal de Disparo",
-  "Cabezal / Aplicador",
-  "Gafas de Protección",
-  "Manual de Usuario",
-  "Embudo de Carga",
-  "Estuche / Maletín"
+  "Cable de Poder", "Pedal de Disparo", "Cabezal / Aplicador", "Gafas de Protección",
+  "Manual de Usuario", "Embudo de Carga", "Estuche / Maletín"
 ];
 
 const DEVICE_TYPES = [
@@ -40,9 +37,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
   const [customAccessory, setCustomAccessory] = useState("");
   const [images, setImages] = useState([]);
 
-  // Gestión de firmas
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-  const [signatureType, setSignatureType] = useState("CLIENT"); // "CLIENT" | "TECH"
+  const [signatureType, setSignatureType] = useState("CLIENT");
   const [clientSig, setClientSig] = useState(null);
   const [tempOrder, setTempOrder] = useState(null);
 
@@ -53,13 +49,38 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files).slice(0, MAX_IMAGES - images.length);
-    files.forEach(file => {
+    const files = Array.from(e.target.files);
+    const available = MAX_IMAGES - images.length;
+
+    files.slice(0, available).forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => setImages(prev => [...prev, reader.result]);
       reader.readAsDataURL(file);
     });
   };
+
+  const handleCapturePhoto = async () => {
+    if (images.length >= MAX_IMAGES) return;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const image = await CapCamera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Base64,
+          source: CameraSource.Prompt
+        });
+        const imageUrl = `data:image/jpeg;base64,${image.base64String}`;
+        setImages(prev => [...prev, imageUrl]);
+      } catch (err) {
+        console.error("Error al capturar foto:", err);
+      }
+    } else {
+      document.getElementById('hidden-photo-input')?.click();
+    }
+  };
+
+  const removeImage = (idx) => setImages(prev => prev.filter((_, i) => i !== idx));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -89,9 +110,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
   const handleSignatureSave = async (signature) => {
     if (signatureType === "CLIENT") {
       setClientSig(signature);
-      setSignatureType("TECH"); // Pasar a la siguiente firma sin cerrar el modal
+      setSignatureType("TECH");
     } else {
-      // Firma del técnico recibida, finalizar todo
       await finalizeOrder(clientSig, signature);
     }
   };
@@ -103,13 +123,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
       if (onSave) onSave(finalData);
       handleClose();
     } catch (err) {
-      alert("Error al guardar: " + err.message);
-    }
-  };
-
-  const handleSaveNoSignatures = async () => {
-    if (window.confirm("¿Guardar ingreso sin firmas?")) {
-      await finalizeOrder(null, null);
+      alert("Error: " + err.message);
     }
   };
 
@@ -142,16 +156,18 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* DATOS CLIENTE */}
             <div className="space-y-4">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest border-l-2 border-cyan-500 pl-3">Datos Cliente</h3>
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Datos Cliente</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" required placeholder="Nombre Completo *" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm" />
                 <input type="tel" required placeholder="Teléfono *" value={formData.clientPhone} onChange={e => setFormData({...formData, clientPhone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm" />
               </div>
             </div>
 
+            {/* DATOS EQUIPO */}
             <div className="space-y-4">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest border-l-2 border-cyan-500 pl-3">Datos Equipo</h3>
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Datos Equipo</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <select required value={formData.deviceType} onChange={e => setFormData({...formData, deviceType: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm">
                   <option value="">Tipo Equipo *</option>
@@ -168,8 +184,9 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
               <textarea required rows={3} placeholder="Falla reportada..." value={formData.issueDescription} onChange={e => setFormData({...formData, issueDescription: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm resize-none" />
             </div>
 
+            {/* ACCESORIOS */}
             <div className="space-y-4">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest border-l-2 border-cyan-500 pl-3">Accesorios</h3>
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Accesorios</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {COMMON_ACCESSORIES.map(item => (
                   <button type="button" key={item} onClick={() => handleAccessoryToggle(item)} className={`p-3 rounded-xl border text-[10px] text-left transition-all ${selectedAccessories.includes(item) ? "bg-cyan-500/10 border-cyan-500 text-cyan-400" : "bg-slate-950 border-slate-800 text-slate-500"}`}>{item}</button>
@@ -177,28 +194,45 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
               </div>
             </div>
 
+            {/* FOTOS */}
+            <div className="space-y-4">
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Fotos de Inspección</h3>
+              <div className="grid grid-cols-4 gap-2">
+                {images.map((img, i) => (
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-slate-800 bg-slate-950">
+                    <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 p-1 bg-black/70 rounded-full text-rose-500"><Trash2 size={12} /></button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <div
+                    onClick={handleCapturePhoto}
+                    className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-lg hover:bg-slate-950 cursor-pointer text-slate-600 transition-colors"
+                  >
+                    <Camera size={24} />
+                    <span className="text-[8px] mt-1 uppercase font-bold">Adjuntar</span>
+                    <input id="hidden-photo-input" type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-xl text-[9px] text-slate-500 space-y-1">
               <p className="font-black text-slate-400 mb-1 uppercase tracking-widest">Términos del Servicio</p>
-              <p>• Plazo estimado de hasta 10 días hábiles.</p>
-              <p>• Retiro máximo 10 días tras reparación; luego cargo de guarda de $1.000/día.</p>
-              <p>• Garantía de 90 meses sobre reparaciones.</p>
+              <p>• Plazo de hasta 10 días hábiles. Garantía de 90 meses.</p>
+              <p>• Retiro máximo 10 días tras reparación; luego cargo de guarda.</p>
               <p>• Tras 90 días sin retiro se configura ABANDONO.</p>
             </div>
 
             <div className="flex justify-end gap-4 pt-6 border-t border-slate-800">
-              <button type="button" onClick={handleSaveNoSignatures} className="px-4 py-2 text-xs font-bold text-amber-500">Guardar sin Firmas</button>
+              <button type="button" onClick={() => finalizeOrder(null, null)} className="px-4 py-2 text-xs font-bold text-amber-500">Guardar sin Firmas</button>
               <button type="submit" className="px-10 py-3 text-xs font-black bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 rounded-xl uppercase tracking-widest">Continuar a Firmas</button>
             </div>
           </form>
         </div>
       </div>
 
-      <SignatureModal
-        isOpen={isSignatureModalOpen}
-        onClose={() => setIsSignatureModalOpen(false)}
-        onSave={handleSignatureSave}
-        title={signatureType === "CLIENT" ? "Firma del Cliente" : "Firma LabRepair (Responsable)"}
-      />
+      <SignatureModal isOpen={isSignatureModalOpen} onClose={() => setIsSignatureModalOpen(false)} onSave={handleSignatureSave} title={signatureType === "CLIENT" ? "Firma del Cliente" : "Firma LabRepair"} />
     </>
   );
 };
