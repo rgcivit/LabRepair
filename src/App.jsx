@@ -135,6 +135,39 @@ export default function App() {
     setIsUserDropdownOpen(false);
   };
 
+  // --- CONTROL DE INACTIVIDAD (15 MINUTOS) ---
+  useEffect(() => {
+    if (!currentUser) return;
+
+    let inactivityTimeout;
+    const FIFTEEN_MINUTES = 15 * 60 * 1000;
+
+    const resetInactivityTimer = () => {
+      if (inactivityTimeout) clearTimeout(inactivityTimeout);
+      inactivityTimeout = setTimeout(() => {
+        handleLogout();
+        console.log("Sesión cerrada por inactividad");
+      }, FIFTEEN_MINUTES);
+    };
+
+    // Eventos que reinician el contador de inactividad
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetInactivityTimer);
+    });
+
+    // Iniciar el temporizador al cargar el componente o loguearse
+    resetInactivityTimer();
+
+    return () => {
+      if (inactivityTimeout) clearTimeout(inactivityTimeout);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetInactivityTimer);
+      });
+    };
+  }, [currentUser]);
+
   const handleChangePasswordSubmit = (e) => {
     e.preventDefault();
     setPassError('');
