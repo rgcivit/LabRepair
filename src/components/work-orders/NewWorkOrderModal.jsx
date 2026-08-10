@@ -16,495 +16,189 @@ const COMMON_ACCESSORIES = [
 ];
 
 const DEVICE_TYPES = [
-  "Criolipólisis",
-  "VelaShape",
-  "Electroporador",
-  "Radiofrecuencia",
-  "Ultrasonido",
-  "Láser de Diodo",
-  "Ondas de Choque",
-  "Presoterapia",
-  "Dermapen",
-  "Otros"
+  "Criolipólisis", "VelaShape", "Electroporador", "Radiofrecuencia",
+  "Ultrasonido", "Láser de Diodo", "Ondas de Choque", "Presoterapia",
+  "Dermapen", "Otros"
 ];
 
 const BRANDS = [
-  "Meditea",
-  "Electromedicina Morales",
-  "Body Health",
-  "Sveltia",
-  "Starbene",
-  "Cec",
-  "Texel",
-  "Sorisa",
-  "Otros"
+  "Meditea", "Electromedicina Morales", "Body Health", "Sveltia",
+  "Starbene", "Cec", "Texel", "Sorisa", "Otros"
 ];
 
 const PRIORITIES = ["BAJA", "MEDIA", "ALTA"];
-
 const MAX_IMAGES = 4;
 
-const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => {
+const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    clientName: "",
-    clientPhone: "",
-    deviceType: "",
-    customDeviceType: "",
-    brandModel: "",
-    customBrandModel: "",
-    serialNumber: "",
-    issueDescription: "",
-    estimatedBudget: "",
-    priority: "MEDIA"
+    clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
+    brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
+    estimatedBudget: "", priority: "MEDIA"
   });
 
   const [selectedAccessories, setSelectedAccessories] = useState([]);
   const [customAccessory, setCustomAccessory] = useState("");
   const [images, setImages] = useState([]);
+
+  // Gestión de firmas
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-  const [signatureType, setSignatureModalType] = useState("CLIENT"); // "CLIENT" | "TECHNICIAN"
-  const [clientSignature, setClientSignature] = useState(null);
-  const [techSignature, setTechSignature] = useState(null);
-  const [tempOrderData, setTempOrderData] = useState(null);
+  const [signatureType, setSignatureType] = useState("CLIENT"); // "CLIENT" | "TECH"
+  const [clientSig, setClientSig] = useState(null);
+  const [tempOrder, setTempOrder] = useState(null);
 
   if (!isOpen) return null;
 
-  const handleAccessoryToggle = (accessory) => {
-    if (selectedAccessories.includes(accessory)) {
-      setSelectedAccessories(selectedAccessories.filter((a) => a !== accessory));
-    } else {
-      setSelectedAccessories([...selectedAccessories, accessory]);
-    }
-  };
-
-  const handleAddCustomAccessory = (e) => {
-    e.preventDefault();
-    if (customAccessory.trim() && !selectedAccessories.includes(customAccessory.trim())) {
-      setSelectedAccessories([...selectedAccessories, customAccessory.trim()]);
-      setCustomAccessory("");
-    }
+  const handleAccessoryToggle = (acc) => {
+    setSelectedAccessories(prev => prev.includes(acc) ? prev.filter(a => a !== acc) : [...prev, acc]);
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    const remainingSlots = MAX_IMAGES - images.length;
-
-    if (files.length > remainingSlots) {
-      alert(`Solo puedes subir hasta ${MAX_IMAGES} fotos en total.`);
-    }
-
-    const filesToProcess = files.slice(0, remainingSlots);
-
-    filesToProcess.forEach(file => {
-      if (!file.type.startsWith("image/")) {
-        alert(`El archivo ${file.name} no es una imagen válida.`);
-        return;
-      }
-
+    const files = Array.from(e.target.files).slice(0, MAX_IMAGES - images.length);
+    files.forEach(file => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImages(prev => [...prev, reader.result]);
-      };
+      reader.onloadend = () => setImages(prev => [...prev, reader.result]);
       reader.readAsDataURL(file);
     });
-    
-    e.target.value = "";
-  };
-
-  const removeImage = (index) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    const finalDeviceType = formData.deviceType === "Otros" ? formData.customDeviceType : formData.deviceType;
-    const finalBrandModel = formData.brandModel === "Otros" ? formData.customBrandModel : formData.brandModel;
+    const type = formData.deviceType === "Otros" ? formData.customDeviceType : formData.deviceType;
+    const brand = formData.brandModel === "Otros" ? formData.customBrandModel : formData.brandModel;
 
-    if (!formData.clientName || !finalDeviceType) {
-      alert("Por favor completa los campos obligatorios.");
-      return;
-    }
+    if (!formData.clientName || !type) return alert("Complete los campos obligatorios.");
 
-    // Generar un ID único tipo OT-1234 si no existe
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newId = `OT-${randomNum}`;
-
+    const orderId = `OT-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder = {
       ...formData,
-      id: newId,
-      deviceType: finalDeviceType,
-      brandModel: finalBrandModel,
+      id: orderId,
+      deviceType: type,
+      brandModel: brand,
       status: "INGRESADO",
       entryDate: new Date().toISOString().split("T")[0],
       accessories: selectedAccessories,
-      images: images,
+      images,
       spareParts: []
     };
 
-    delete newOrder.customDeviceType;
-    delete newOrder.customBrandModel;
-
-    // Preparar datos temporales y abrir primera firma (Cliente)
-    setTempOrderData(newOrder);
-    setSignatureModalType("CLIENT");
+    setTempOrder(newOrder);
+    setSignatureType("CLIENT");
     setIsSignatureModalOpen(true);
   };
 
-  const handleSignatureComplete = (signatureBase64) => {
+  const handleSignatureSave = async (signature) => {
     if (signatureType === "CLIENT") {
-      setClientSignature(signatureBase64);
-      // Pasar a la firma del Técnico
-      setSignatureModalType("TECHNICIAN");
-      setIsSignatureModalOpen(true);
+      setClientSig(signature);
+      setSignatureType("TECH"); // Pasar a la siguiente firma sin cerrar el modal
     } else {
-      setTechSignature(signatureBase64);
-      // Finalizar tras firma del técnico
-      finishOrder(clientSignature, signatureBase64);
+      // Firma del técnico recibida, finalizar todo
+      await finalizeOrder(clientSig, signature);
     }
   };
 
-  const finishOrder = async (cSig, tSig) => {
+  const finalizeOrder = async (cSig, tSig) => {
     try {
-      const orderToSave = {
-        ...tempOrderData,
-        clientSignature: cSig,
-        techSignature: tSig
-      };
-
-      // Llamamos directamente al onSave del padre (App.jsx) que ya hace el saveWorkOrder
-      if (onSave) {
-        await onSave(orderToSave);
-      } else {
-        // Si no hay onSave (fallback), guardamos aquí
-        await saveWorkOrder(orderToSave);
-      }
-
-      onClose();
-      resetForm();
+      const finalData = { ...tempOrder, clientSignature: cSig, techSignature: tSig };
+      await saveWorkOrder(finalData);
+      if (onSave) onSave(finalData);
+      handleClose();
     } catch (err) {
-      alert("Error al procesar el ingreso: " + err.message);
+      alert("Error al guardar: " + err.message);
     }
   };
 
-  const resetForm = () => {
-    setImages([]);
-    setSelectedAccessories([]);
-    setClientSignature(null);
-    setTechSignature(null);
+  const handleSaveNoSignatures = async () => {
+    if (window.confirm("¿Guardar ingreso sin firmas?")) {
+      await finalizeOrder(null, null);
+    }
+  };
+
+  const handleClose = () => {
     setFormData({
-      clientName: "",
-      clientPhone: "",
-      deviceType: "",
-      customDeviceType: "",
-      brandModel: "",
-      customBrandModel: "",
-      serialNumber: "",
-      issueDescription: "",
-      estimatedBudget: "",
-      priority: "MEDIA"
+      clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
+      brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
+      estimatedBudget: "", priority: "MEDIA"
     });
-    setTempOrderData(null);
-  };
-
-  const handleSkipSignatures = async () => {
-    if (window.confirm("¿Desea guardar el ingreso sin firmas?")) {
-      finishOrder(null, null);
-    }
+    setSelectedAccessories([]);
+    setImages([]);
+    setClientSig(null);
+    setTempOrder(null);
+    setIsSignatureModalOpen(false);
+    onClose();
   };
 
   return (
     <>
       <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-        {/* MODAL - FONDO AZUL PROFUNDO */}
-        <div className="bg-[#0f172a] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto border border-slate-700 text-slate-100 selection:bg-cyan-500/30">
-
-          {/* HEADER */}
+        <div className="bg-[#0f172a] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto border border-slate-700 text-slate-100">
           <div className="flex justify-between items-center p-6 border-b border-slate-800 sticky top-0 bg-[#0f172a] z-10">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl overflow-hidden shadow-lg border border-slate-700">
+              <div className="h-12 w-12 rounded-xl overflow-hidden border border-slate-700">
                 <img src={logo} alt="Logo" className="h-full w-full object-cover" />
               </div>
-              <div>
-                <h2 className="text-xl font-black text-white tracking-widest uppercase">Nuevo Ingreso</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest font-mono">Registro de Orden Técnica</p>
-              </div>
+              <h2 className="text-xl font-black tracking-widest uppercase">Nuevo Ingreso</h2>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-500 hover:text-white"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <button onClick={handleClose} className="p-2 text-slate-500 hover:text-white"><X /></button>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
-            {/* SECCIÓN CLIENTE */}
             <div className="space-y-4">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-[0.2em] border-l-2 border-cyan-500 pl-3">Datos del Cliente</h3>
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest border-l-2 border-cyan-500 pl-3">Datos Cliente</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nombre Completo *</label>
-                  <div className="relative group">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.clientName}
-                      onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 placeholder-slate-700 transition-all outline-none"
-                      placeholder="Ej. Juan Perez"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Teléfono de Contacto *</label>
-                  <div className="relative group">
-                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-                    <input
-                      type="tel"
-                      required
-                      value={formData.clientPhone}
-                      onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 placeholder-slate-700 transition-all outline-none"
-                      placeholder="Ej. +54 9 261 ..."
-                    />
-                  </div>
-                </div>
+                <input type="text" required placeholder="Nombre Completo *" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm" />
+                <input type="tel" required placeholder="Teléfono *" value={formData.clientPhone} onChange={e => setFormData({...formData, clientPhone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm" />
               </div>
             </div>
 
-            {/* SECCIÓN EQUIPO */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-[0.2em] border-l-2 border-cyan-500 pl-3">Datos Técnicos</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tipo de Equipo *</label>
-                  <select
-                    required
-                    value={formData.deviceType}
-                    onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 cursor-pointer appearance-none outline-none transition-all"
-                  >
-                    <option value="">-- Seleccionar --</option>
-                    {DEVICE_TYPES.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  {formData.deviceType === "Otros" && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Especificar equipo..."
-                      value={formData.customDeviceType}
-                      onChange={(e) => setFormData({ ...formData, customDeviceType: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-cyan-500/50 rounded-xl text-xs text-slate-100 mt-2 animate-fadeIn outline-none"
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Marca / Modelo *</label>
-                  <select
-                    required
-                    value={formData.brandModel}
-                    onChange={(e) => setFormData({ ...formData, brandModel: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 cursor-pointer appearance-none outline-none transition-all"
-                  >
-                    <option value="">-- Seleccionar --</option>
-                    {BRANDS.map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
-                  </select>
-                  {formData.brandModel === "Otros" && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Especificar marca..."
-                      value={formData.customBrandModel}
-                      onChange={(e) => setFormData({ ...formData, customBrandModel: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-950 border border-cyan-500/50 rounded-xl text-xs text-slate-100 mt-2 animate-fadeIn outline-none"
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Número de Serie *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.serialNumber}
-                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 placeholder-slate-700 outline-none transition-all"
-                    placeholder="N/S..."
-                  />
-                </div>
+            <div className="space-y-4">
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest border-l-2 border-cyan-500 pl-3">Datos Equipo</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <select required value={formData.deviceType} onChange={e => setFormData({...formData, deviceType: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm">
+                  <option value="">Tipo Equipo *</option>
+                  {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <select required value={formData.brandModel} onChange={e => setFormData({...formData, brandModel: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm">
+                  <option value="">Marca *</option>
+                  {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <input type="text" required placeholder="Nro Serie *" value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm" />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Prioridad del Servicio *</label>
-                  <select
-                    required
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 cursor-pointer appearance-none outline-none transition-all"
-                  >
-                    {PRIORITIES.map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Falla Reportada e Inspección</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={formData.issueDescription}
-                  onChange={(e) => setFormData({ ...formData, issueDescription: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500 text-sm text-slate-100 placeholder-slate-700 resize-none outline-none transition-all"
-                  placeholder="Describa los síntomas reportados..."
-                />
-              </div>
+              {formData.deviceType === "Otros" && <input type="text" required placeholder="Especificar tipo" value={formData.customDeviceType} onChange={e => setFormData({...formData, customDeviceType: e.target.value})} className="w-full bg-slate-950 border border-cyan-500/50 rounded-xl px-3 py-2 text-xs" />}
+              {formData.brandModel === "Otros" && <input type="text" required placeholder="Especificar marca" value={formData.customBrandModel} onChange={e => setFormData({...formData, customBrandModel: e.target.value})} className="w-full bg-slate-950 border border-cyan-500/50 rounded-xl px-3 py-2 text-xs" />}
+              <textarea required rows={3} placeholder="Falla reportada..." value={formData.issueDescription} onChange={e => setFormData({...formData, issueDescription: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm resize-none" />
             </div>
 
-            {/* ACCESORIOS */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-[0.2em] border-l-2 border-cyan-500 pl-3">Accesorios Recibidos</h3>
+            <div className="space-y-4">
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-widest border-l-2 border-cyan-500 pl-3">Accesorios</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {COMMON_ACCESSORIES.map((item) => (
-                  <label
-                    key={item}
-                    className={`flex items-center justify-between p-3 rounded-xl border text-[11px] cursor-pointer transition-all ${
-                      selectedAccessories.includes(item)
-                        ? "bg-cyan-500/10 border-cyan-500/50 text-cyan-400 font-bold"
-                        : "bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700"
-                    }`}
-                  >
-                    <span>{item}</span>
-                    <input
-                      type="checkbox"
-                      checked={selectedAccessories.includes(item)}
-                      onChange={() => handleAccessoryToggle(item)}
-                      className="h-4 w-4 rounded bg-slate-900 border-slate-700 text-cyan-600 focus:ring-cyan-500"
-                    />
-                  </label>
+                {COMMON_ACCESSORIES.map(item => (
+                  <button type="button" key={item} onClick={() => handleAccessoryToggle(item)} className={`p-3 rounded-xl border text-[10px] text-left transition-all ${selectedAccessories.includes(item) ? "bg-cyan-500/10 border-cyan-500 text-cyan-400" : "bg-slate-950 border-slate-800 text-slate-500"}`}>{item}</button>
                 ))}
               </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Añadir accesorio manual..."
-                  value={customAccessory}
-                  onChange={(e) => setCustomAccessory(e.target.value)}
-                  className="flex-1 px-4 py-2 text-xs bg-slate-950 border border-slate-800 rounded-xl focus:ring-1 focus:ring-cyan-500/50 text-slate-300 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCustomAccessory}
-                  className="px-4 py-2 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 font-black rounded-xl border border-slate-700 flex items-center gap-2 uppercase tracking-tighter transition-all"
-                >
-                  <Plus className="w-4 h-4" /> Agregar
-                </button>
-              </div>
             </div>
 
-            {/* FOTOS - CAMPO DE ADJUNTO */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-[11px] font-black text-cyan-500 uppercase tracking-[0.2em] border-l-2 border-cyan-500 pl-3">Evidencia Fotográfica</h3>
-
-              {images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-xl group">
-                      <img src={img} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-rose-600 text-white rounded-full transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {images.length < MAX_IMAGES && (
-                <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-950/50 hover:bg-slate-900/50 hover:border-cyan-500/40 transition-all cursor-pointer group">
-                  <div className="p-4 bg-cyan-500/10 rounded-full text-cyan-500 mb-3 group-hover:scale-110 transition-transform">
-                    <Camera className="w-8 h-8" />
-                  </div>
-                  <span className="text-xs font-black text-slate-300 uppercase tracking-widest">Tomar o Adjuntar Fotos</span>
-                  <span className="text-[9px] text-slate-600 mt-2 uppercase font-bold">
-                    Hasta {MAX_IMAGES} capturas • JPG / PNG
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
+            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-xl text-[9px] text-slate-500 space-y-1">
+              <p className="font-black text-slate-400 mb-1 uppercase tracking-widest">Términos del Servicio</p>
+              <p>• Plazo estimado de hasta 10 días hábiles.</p>
+              <p>• Retiro máximo 10 días tras reparación; luego cargo de guarda de $1.000/día.</p>
+              <p>• Garantía de 90 meses sobre reparaciones.</p>
+              <p>• Tras 90 días sin retiro se configura ABANDONO.</p>
             </div>
 
-            {/* TÉRMINOS Y CONDICIONES FIJOS EN PANTALLA */}
-            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-xl space-y-3">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Términos y Condiciones del Servicio</h4>
-              <div className="max-h-32 overflow-y-auto pr-2 text-[9px] text-slate-500 space-y-2 leading-relaxed custom-scrollbar">
-                <p><strong>1- PLAZOS:</strong> La Empresa dará cumplimiento a la solicitud de servicio dentro de un plazo estimado de hasta 10 (diez) días hábiles...</p>
-                <p><strong>2- RETIRO Y GUARDA:</strong> El equipo deberá ser retirado en un plazo máximo de 10 días hábiles posteriores a la fecha prevista de entrega...</p>
-                <p><strong>3- GARANTÍA:</strong> Las reparaciones cuentan con una garantía limitada de 90 (treinta) meses. Sujeto a términos de fabricante.</p>
-                <p><strong>4- PAGO Y ABANDONO:</strong> Los equipos se entregan sin excepción contra pago efectivo. Tras 90 días sin ser retirado, se configurará la condición de ABANDONO.</p>
-                <p><strong>5- ENTREGA:</strong> La restitución de los productos se efectuará contra la cancelación total de los importes facturados (diagnóstico, MO, repuestos, guarda).</p>
-                <p><strong>6- RESPONSABILIDAD:</strong> La Empresa no asume responsabilidad por procedencia. Exenta por casos fortuitos o fuerza mayor.</p>
-                <p><strong>7- LOGÍSTICA:</strong> Los costos de traslados, envíos y/o retiros correrán por cuenta y riesgo exclusivo del Cliente.</p>
-                <p><strong>8- CARGOS:</strong> Servicios de diagnóstico y fletes tienen un cargo de $20.000, exceptuando garantías.</p>
-              </div>
+            <div className="flex justify-end gap-4 pt-6 border-t border-slate-800">
+              <button type="button" onClick={handleSaveNoSignatures} className="px-4 py-2 text-xs font-bold text-amber-500">Guardar sin Firmas</button>
+              <button type="submit" className="px-10 py-3 text-xs font-black bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 rounded-xl uppercase tracking-widest">Continuar a Firmas</button>
             </div>
-
-            {/* ACCIONES */}
-          <div className="flex justify-end items-center gap-4 pt-6 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleSkipSignatures}
-              className="px-4 py-2 text-[10px] font-bold text-amber-500 hover:text-amber-400 transition-colors uppercase"
-            >
-              Guardar sin Firmas
-            </button>
-            <button
-              type="submit"
-              className="px-10 py-3 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 rounded-xl shadow-xl shadow-cyan-500/10 active:scale-95 transition-all uppercase tracking-[0.15em] flex items-center gap-2"
-            >
-              <FileCheck className="w-4 h-4" /> Continuar a Firmas
-            </button>
-          </div>
-
-        </form>
+          </form>
+        </div>
       </div>
 
       <SignatureModal
         isOpen={isSignatureModalOpen}
         onClose={() => setIsSignatureModalOpen(false)}
-        onSave={handleSignatureComplete}
-        title={signatureType === "CLIENT" ? "Firma de Recepción (Cliente)" : "Firma de Responsable (LabRepair)"}
+        onSave={handleSignatureSave}
+        title={signatureType === "CLIENT" ? "Firma del Cliente" : "Firma LabRepair (Responsable)"}
       />
-    </div>
     </>
   );
 };

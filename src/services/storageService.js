@@ -3,29 +3,44 @@ import { supabase } from './supabaseClient';
 const WORK_ORDERS_KEY = "labrepair_work_orders";
 const INVENTORY_KEY = "labrepair_inventory";
 
-// --- HELPERS PARA SUPABASE ---
-
 /**
- * Convierte objetos de CamelCase (JavaScript) a snake_case (Postgres/Supabase)
- * y limpia valores incompatibles para columnas numéricas.
+ * Lista blanca de columnas permitidas en la tabla work_orders para evitar errores 400
+ * si enviamos campos extra que no existen en la base de datos.
  */
+const VALID_WORK_ORDER_COLUMNS = [
+  "id", "client_name", "client_phone", "device_type", "brand_model",
+  "serial_number", "issue_description", "estimated_budget", "priority",
+  "status", "entry_date", "accessories", "images", "spare_parts",
+  "diagnosis", "labor_cost", "client_signature", "tech_signature",
+  "budget_details", "qc_passed", "bench_test"
+];
+
 const mapToSnakeCase = (obj) => {
   const snake = {};
-  const numericFields = ["estimatedBudget", "laborCost", "price", "cost", "stock", "minStock"];
+  const numericFields = ["estimated_budget", "labor_cost", "price", "cost", "stock", "min_stock"];
 
   for (const key in obj) {
+    // 1. Convertir key a snake_case
+    const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
+    // 2. Filtrar solo columnas válidas (si es para work_orders)
+    // Nota: Esto es simplificado, en un entorno real usaríamos esquemas por tabla.
+    if (obj.id && obj.id.startsWith('OT-') && !VALID_WORK_ORDER_COLUMNS.includes(snakeKey)) {
+      continue;
+    }
+
     let value = obj[key];
 
-    // Limpieza de campos numéricos (evitar error 22P02: invalid input syntax for type numeric: "")
-    if (numericFields.includes(key)) {
+    // 3. Limpieza de campos numéricos (evitar error de sintaxis "")
+    if (numericFields.includes(snakeKey)) {
       if (value === "" || value === undefined || value === null) {
-        value = null; // Enviar null real a la DB
+        value = null;
       } else {
-        value = parseFloat(value);
+        const parsed = parseFloat(value);
+        value = isNaN(parsed) ? null : parsed;
       }
     }
 
-    const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
     snake[snakeKey] = value;
   }
   return snake;
@@ -73,21 +88,23 @@ export const saveWorkOrder = async (workOrder) => {
   try {
     const snakeOrder = mapToSnakeCase(workOrder);
 
-    // Log para depuración (ver qué se envía realmente)
-    console.log("Enviando orden a Supabase:", snakeOrder);
+    // Asegurar que el ID esté presente
+    if (!snakeOrder.id) {
+        snakeOrder.id = `OT-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    console.log("Upserting a Supabase:", snakeOrder);
 
     const { error } = await supabase
       .from('work_orders')
       .upsert(snakeOrder);
 
-    if (error) {
-      console.error("Error detallado Supabase:", error);
-      throw error;
-    }
+    if (error) throw error;
 
     return await getWorkOrders();
   } catch (error) {
-    console.error("Fallo guardado en la nube, usando fallback local:", error);
+    console.error("Fallo guardado en Supabase:", error);
+    // Fallback Local
     const orders = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
     const index = orders.findIndex(o => o.id === workOrder.id);
     let updated;
@@ -122,8 +139,8 @@ export const getInventory = async () => {
     safeSaveLocal(INVENTORY_KEY, items);
     return items;
   } catch (error) {
-    console.error("Error al leer inventario:", error);
-    return JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
+    const localData = localStorage.getItem(INVENTORY_KEY);
+    return localData ? JSON.parse(localData) : [];
   }
 };
 
@@ -134,7 +151,6 @@ export const saveInventoryItem = async (item) => {
     if (error) throw error;
     return await getInventory();
   } catch (error) {
-    console.error("Error al guardar item:", error);
     return JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
   }
 };

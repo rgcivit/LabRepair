@@ -12,14 +12,14 @@ export default function SignatureModal({ isOpen, onClose, onSave, title = "Firma
         backgroundColor: 'rgb(255, 255, 255)',
         penColor: 'rgb(0, 0, 0)'
       });
-      signaturePadRef.current.clear(); // Asegurar limpieza al iniciar
+      signaturePadRef.current.clear();
 
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       canvasRef.current.width = canvasRef.current.offsetWidth * ratio;
       canvasRef.current.height = canvasRef.current.offsetHeight * ratio;
       canvasRef.current.getContext("2d").scale(ratio, ratio);
     }
-  }, [isOpen, title]); // Re-iniciar si cambia el título (ej. de cliente a técnico)
+  }, [isOpen, title]);
 
   if (!isOpen) return null;
 
@@ -34,7 +34,7 @@ export default function SignatureModal({ isOpen, onClose, onSave, title = "Firma
     }
     const dataUrl = signaturePadRef.current.toDataURL();
     onSave(dataUrl);
-    onClose();
+    // IMPORTANTE: No llamamos a onClose() aquí, dejamos que el padre decida.
   };
 
   return (
@@ -47,14 +47,14 @@ export default function SignatureModal({ isOpen, onClose, onSave, title = "Firma
           </button>
         </div>
 
-        <div className="p-6 bg-slate-100">
-          <div className="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden shadow-inner h-64">
+        <div className="p-6 bg-slate-100 select-none">
+          <div className="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden shadow-inner h-64 touch-none">
             <canvas
               ref={canvasRef}
-              className="w-full h-full touch-none"
+              className="w-full h-full touch-none cursor-crosshair"
             />
           </div>
-          <p className="text-[10px] text-slate-500 mt-3 text-center uppercase font-bold">Firme dentro del recuadro usando su dedo o un lápiz óptico</p>
+          <p className="text-[10px] text-slate-500 mt-3 text-center uppercase font-bold">Firme dentro del recuadro con el dedo o lápiz óptico</p>
         </div>
 
         <div className="flex items-center justify-between p-4 bg-slate-50 border-t border-slate-100">
