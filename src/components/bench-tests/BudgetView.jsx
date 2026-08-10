@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import { generateBudgetPDF } from '../../services/pdfService';
 
 /**
  * Componente BudgetView de alta gama comercial e ingenieril.
@@ -159,263 +158,28 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   };
 
   // --- EXPORTAR PDF FORMAL DE COTIZACIÓN ---
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    
-    // Carga dinámica de configuraciones desde localStorage
-    let settings = {
-      companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
-      companyCuit: 'CUIT: 30-71628312-9',
-      companyAddress: 'Av. Juan de Garay 1420, CABA',
-      companyPhone: '+54 9 2616625074',
-      companyEmail: 'calibracion@labrepair.com',
-      pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
-    };
-    try {
-      const saved = localStorage.getItem('estetica_lab_settings');
-      if (saved) settings = { ...settings, ...JSON.parse(saved) };
-    } catch (e) {
-      console.error(e);
-    }
-
-    // Header corporativo Slate y Cyan
-    doc.setFillColor(30, 41, 59); // Slate 800
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setFillColor(6, 182, 212); // Cyan 500
-    doc.rect(0, 40, 210, 2, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(settings.companyName.toUpperCase(), 15, 18);
-    
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-    doc.text("CONSOLA DE PRESUPUESTO COMERCIAL Y COTIZACIÓN DE SERVICIO", 15, 25);
-    
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(6, 182, 212);
-    doc.setFontSize(10.5);
-    doc.text(`PRESUPUESTO DE INGENIERÍA: #PR-${selectedOT.id}`, 15, 33);
-
-    // Logo comercial o isotipo por defecto
-    if (settings.logo) {
-      try { doc.addImage(settings.logo, 'PNG', 165, 6, 30, 16); } catch (e) { doc.text("LabRepair", 165, 20); }
-    } else {
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.text("LabRepair", 165, 20);
-    }
-
-    // Datos del cliente y equipo
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10.5);
-    doc.text("DETALLES COMERCIALES Y DE EQUIPO", 15, 52);
-    doc.setDrawColor(226, 232, 240);
-    doc.line(15, 55, 195, 55);
-
-    doc.setTextColor(51, 65, 85);
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-
-    doc.setFont("helvetica", "bold"); doc.text("Orden de Trabajo (OT):", 15, 61);
-    doc.setFont("helvetica", "normal"); doc.text(selectedOT.id, 55, 61);
-    doc.setFont("helvetica", "bold"); doc.text("Fecha Emisión:", 110, 61);
-    doc.setFont("helvetica", "normal"); doc.text(new Date().toLocaleDateString('es-AR'), 150, 61);
-
-    doc.setFont("helvetica", "bold"); doc.text("Cliente / Clínica:", 15, 67);
-    doc.setFont("helvetica", "normal"); doc.text(selectedOT.clientName, 55, 67);
-    doc.setFont("helvetica", "bold"); doc.text("Aparatología:", 110, 67);
-    doc.setFont("helvetica", "normal"); doc.text(selectedOT.equipmentType, 150, 67);
-
-    doc.setFont("helvetica", "bold"); doc.text("Equipo y Modelo:", 15, 73);
-    doc.setFont("helvetica", "normal"); doc.text(`${selectedOT.brand} ${selectedOT.model}`, 55, 73);
-    doc.setFont("helvetica", "bold"); doc.text("Nro. de Serie (S/N):", 110, 73);
-    doc.setFont("helvetica", "normal"); doc.text(selectedOT.serialNumber, 150, 73);
-
-    // Diagnóstico
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "bold");
-    doc.text("DIAGNÓSTICO TÉCNICO DE BANCO DE PRUEBAS", 15, 84);
-    doc.line(15, 87, 195, 87);
-    doc.setTextColor(51, 65, 85);
-    doc.setFont("helvetica", "normal");
-    const splitDiagnosis = doc.splitTextToSize(selectedOT.diagnosis || "Sin anomalías reportadas en el ingreso.", 180);
-    doc.text(splitDiagnosis, 15, 92);
-
-    // Listado de repuestos
-    let startY = 105;
-    if (imputedParts.length > 0) {
-      doc.setTextColor(30, 41, 59);
-      doc.setFont("helvetica", "bold");
-      doc.text("IMPUTACIÓN DETALLADA DE REPUESTOS E INSUMOS", 15, startY);
-      
-      const columns = ["Cod. ID", "Detalle de Repuesto", "Calidad", "Cant.", "Precio Unitario", "Subtotal"];
-      const rows = imputedParts.map(p => [
-        p.id,
-        p.name,
-        p.quality,
-        p.quantity,
-        `${curSymbol} ${p.price.toLocaleString('es-AR')}`,
-        `${curSymbol} ${(p.price * p.quantity).toLocaleString('es-AR')}`
-      ]);
-
-      doc.autoTable({
-        startY: startY + 4,
-        head: [columns],
-        body: rows,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 41, 59], fontSize: 8 },
-        styles: { fontSize: 7.5, cellPadding: 2.5 },
-        columnStyles: {
-          0: { fontStyle: 'bold' },
-          3: { halign: 'center' },
-          4: { halign: 'right' },
-          5: { halign: 'right', fontStyle: 'bold' }
-        }
-      });
-      startY = doc.previousAutoTable.finalY + 12;
-    }
-
-    // Mano de obra y logística
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "bold");
-    doc.text("RESUMEN DE MANO DE OBRA Y SERVICIOS ADICIONALES", 15, startY);
-    doc.line(15, startY + 3, 195, startY + 3);
-
-    doc.setTextColor(51, 65, 85);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-
-    let offset = startY + 9;
-    doc.setFont("helvetica", "bold"); doc.text("Servicio de Ingeniería / Reparación Base:", 15, offset);
-    doc.setFont("helvetica", "normal"); doc.text(`${curSymbol} ${parseFloat(laborCost).toLocaleString('es-AR')} ${currency}`, 105, offset);
-    
-    if (freightCost > 0) {
-      offset += 5.5;
-      doc.setFont("helvetica", "bold"); doc.text("Logística (Flete, Retiro Seguro, Traslado):", 15, offset);
-      doc.setFont("helvetica", "normal"); doc.text(`${curSymbol} ${parseFloat(freightCost).toLocaleString('es-AR')} ${currency}`, 105, offset);
-    }
-    if (diagnosisCost > 0) {
-      offset += 5.5;
-      doc.setFont("helvetica", "bold"); doc.text("Costo de Diagnóstico y Revisión en Banco:", 15, offset);
-      doc.setFont("helvetica", "normal"); doc.text(`${curSymbol} ${parseFloat(diagnosisCost).toLocaleString('es-AR')} ${currency}`, 105, offset);
-    }
-    if (urgencyCost > 0) {
-      offset += 5.5;
-      doc.setFont("helvetica", "bold"); doc.text("Recargo Urgencia / Prioridad de Calibración Express:", 15, offset);
-      doc.setFont("helvetica", "normal"); doc.text(`${curSymbol} ${parseFloat(urgencyCost).toLocaleString('es-AR')} ${currency}`, 105, offset);
-    }
-
-    // Condiciones comerciales
-    offset += 10;
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "bold");
-    doc.text("CONDICIONES COMERCIALES DE LA OFERTA", 15, offset);
-    doc.line(15, offset + 3, 195, offset + 3);
-
-    doc.setTextColor(51, 65, 85);
-    doc.setFont("helvetica", "normal");
-    
-    offset += 9;
-    doc.setFont("helvetica", "bold"); doc.text("Validez del Presupuesto:", 15, offset);
-    doc.setFont("helvetica", "normal"); doc.text(`${validityDays} días corridos`, 60, offset);
-
-    doc.setFont("helvetica", "bold"); doc.text("Tiempo Estimado (ETA):", 115, offset);
-    doc.setFont("helvetica", "normal"); doc.text(etaDays, 160, offset);
-
-    offset += 5.5;
-    doc.setFont("helvetica", "bold"); doc.text("Condiciones de Pago:", 15, offset);
-    doc.setFont("helvetica", "normal"); doc.text(paymentTerms, 60, offset);
-
-    doc.setFont("helvetica", "bold"); doc.text("Garantía del Trabajo:", 115, offset);
-    doc.setFont("helvetica", "normal"); doc.text(`${warrantyMonths} meses sobre repuestos/servicio`, 160, offset);
-
-    // Cuadro de totales y Términos Legales de Pago
-    offset += 12;
-
-    // 1. Recuadro de Términos Legales, Presupuesto y Pago (Izquierda)
-    doc.setFillColor(250, 250, 252); // Gris claro
-    doc.rect(15, offset, 100, 48, 'F');
-    doc.setDrawColor(203, 213, 225); // Slate 300
-    doc.rect(15, offset, 100, 48, 'D');
-
-    doc.setTextColor(6, 182, 212); // Cyan 500
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.text("TÉRMINOS DE REVISIÓN, CLÁUSULAS LEGALES Y TRANSFERENCIA", 18, offset + 5);
-
-    const legalLines = [
-      "• El costo de la revisión y presupuesto es de $15.000, el cual se cancela en el momento",
-      "  del envío del equipo para su revisión y que será descontado del presupuesto final,",
-      "  en el caso de que se pueda realizar la reparación.",
-      "• El precio del presupuesto puede variar dependiendo de la variación del dólar.",
-      "• De acuerdo con lo establecido en el Código Civil y Comercial de la Nación Argentina",
-      "  (Artículos 1907 cc, 2607 ccyc y 1947 cc), once reparado y notificado, el equipo deberá",
-      "  ser retirado en un plazo máximo de un mes. Pasado este período, se considerará que el",
-      "  bien ha sido abandonado, y el prestador del servicio podrá disponer de él legalmente.",
-      "• Pago por Mercado Pago | ALIAS: rgcivit",
-      "  (Enviar por favor comprobante de transferencia una vez realizada, muchas gracias.)"
-    ];
-
-    let lineY = offset + 9.5;
-    legalLines.forEach((line) => {
-      if (line.includes("ALIAS: rgcivit") || line.includes("comprobante")) {
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(15, 23, 42); // Slate 900
-      } else {
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(71, 85, 105); // Slate 600
+  const handleDownloadPDF = async () => {
+    const budgetOrder = {
+      ...selectedOT,
+      laborCost,
+      sparePartsAssigned: imputedParts,
+      diagnosis: selectedOT.diagnosis,
+      budgetDetails: {
+        currency,
+        ivaRate,
+        discountValue,
+        discountType,
+        freightCost,
+        diagnosisCost,
+        urgencyCost,
+        validityDays,
+        etaDays,
+        paymentTerms,
+        warrantyMonths,
+        grandTotal
       }
-      doc.setFontSize(5.8);
-      doc.text(line, 18, lineY);
-      lineY += 3.8;
-    });
-
-    // 2. Cuadro de Totales (Derecha)
-    doc.setFillColor(248, 250, 252); // slate 50
-    doc.rect(120, offset, 75, 48, 'F');
-    doc.setDrawColor(203, 213, 225); // slate 300
-    doc.rect(120, offset, 75, 48, 'D');
-
-    doc.setTextColor(71, 85, 105);
-    doc.setFontSize(8);
-    
-    let textY = offset + 7;
-    doc.text(`Subtotal Neto:`, 124, textY);
-    doc.text(`${curSymbol} ${preTaxSubtotal.toLocaleString('es-AR')} ${currency}`, 190, textY, { align: 'right' });
-
-    if (discountValue > 0) {
-      textY += 6;
-      doc.text(`Descuento (${discountValue}${discountType === 'PERCENT' ? '%' : ''}):`, 124, textY);
-      doc.text(`- ${curSymbol} ${discountAmount.toLocaleString('es-AR')} ${currency}`, 190, textY, { align: 'right' });
-    }
-
-    if (ivaRate > 0) {
-      textY += 6;
-      doc.text(`IVA (${ivaRate}%):`, 124, textY);
-      doc.text(`${curSymbol} ${ivaAmount.toLocaleString('es-AR')} ${currency}`, 190, textY, { align: 'right' });
-    }
-
-    textY += 8;
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10.5);
-    doc.text(`TOTAL NETO:`, 124, textY);
-    doc.text(`${curSymbol} ${grandTotal.toLocaleString('es-AR')} ${currency}`, 190, textY, { align: 'right' });
-
-    // Pie de página
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setTextColor(148, 163, 184);
-      doc.setFontSize(6.5);
-      doc.text(settings.pdfFooter.toUpperCase(), 15, 285);
-      doc.text(`Página ${i} de ${pageCount} | Dirección: ${settings.companyAddress}`, 15, 289);
-    }
-
-    doc.save(`${selectedOT.id} - ${selectedOT.clientName}.pdf`);
+    };
+    await generateBudgetPDF(budgetOrder);
   };
 
   // --- WHATSAPP TEMPLATES ---
