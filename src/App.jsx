@@ -622,18 +622,15 @@ export default function App() {
                                   className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
                                 >
                                   <span>Diagnóstico</span>
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                  </svg>
                                 </button>
 
                                 <button
                                   onClick={() => generateEntryReceipt(order, order.clientSignature, logo)}
-                                  className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-lg transition-colors"
-                                  title="Descargar Comprobante de Ingreso"
+                                  className="px-3 py-1.5 text-xs font-bold text-emerald-400 hover:text-slate-950 bg-emerald-950/40 hover:bg-gradient-to-r hover:from-emerald-400 hover:to-emerald-300 border border-emerald-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  <span>Comprobante</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                                   </svg>
                                 </button>
 

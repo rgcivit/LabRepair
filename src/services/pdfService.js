@@ -222,6 +222,10 @@ export const exportWorkOrdersToPDF = (orders) => {
   doc.setTextColor(255, 255, 255); doc.setFontSize(16); doc.text("REPORTE GENERAL DE TALLER", 15, 18);
   const rows = orders.map(o => [o.id, `${o.deviceType || o.equipmentName}`, o.clientName, o.entryDate, o.status]);
   doc.autoTable({ startY: 45, head: [["ID", "Equipo", "Cliente", "Fecha", "Estado"]], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
+
+  // Añadir T&C al final del reporte resumen
+  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 15);
+
   saveOrSharePDF(doc, "Reporte_General_LabRepair.pdf");
 };
 
