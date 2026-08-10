@@ -171,9 +171,15 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
         clientSignature: cSig,
         techSignature: tSig
       };
-      await saveWorkOrder(orderToSave);
 
-      if (onSave) onSave(orderToSave);
+      // Llamamos directamente al onSave del padre (App.jsx) que ya hace el saveWorkOrder
+      if (onSave) {
+        await onSave(orderToSave);
+      } else {
+        // Si no hay onSave (fallback), guardamos aquí
+        await saveWorkOrder(orderToSave);
+      }
+
       onClose();
       resetForm();
     } catch (err) {

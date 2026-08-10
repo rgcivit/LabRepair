@@ -12,14 +12,14 @@ export default function SignatureModal({ isOpen, onClose, onSave, title = "Firma
         backgroundColor: 'rgb(255, 255, 255)',
         penColor: 'rgb(0, 0, 0)'
       });
+      signaturePadRef.current.clear(); // Asegurar limpieza al iniciar
 
-      // Ajustar tamaño del canvas al contenedor
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       canvasRef.current.width = canvasRef.current.offsetWidth * ratio;
       canvasRef.current.height = canvasRef.current.offsetHeight * ratio;
       canvasRef.current.getContext("2d").scale(ratio, ratio);
     }
-  }, [isOpen]);
+  }, [isOpen, title]); // Re-iniciar si cambia el título (ej. de cliente a técnico)
 
   if (!isOpen) return null;
 
