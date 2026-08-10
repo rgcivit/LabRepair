@@ -5,12 +5,16 @@ const INVENTORY_KEY = "labrepair_inventory";
 
 // --- HELPERS PARA SUPABASE ---
 
-// Mapeo de nombres de campos camelCase (JS) a snake_case (SQL)
 const mapToSnakeCase = (obj) => {
   const snake = {};
   for (const key in obj) {
+    // Si el valor es una cadena vacía y el campo parece ser numérico, enviamos null
+    let value = obj[key];
+    if (value === "" && (key === "estimatedBudget" || key === "laborCost")) {
+      value = null;
+    }
     const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-    snake[snakeKey] = obj[key];
+    snake[snakeKey] = value;
   }
   return snake;
 };
@@ -22,6 +26,28 @@ const mapToCamelCase = (obj) => {
     camel[camelKey] = obj[key];
   }
   return camel;
+};
+
+/**
+ * Función para guardar en LocalStorage de forma segura (sin que crashee la app si se llena)
+ */
+const safeSaveLocal = (key, data) => {
+  try {
+    const stringData = JSON.stringify(data);
+    // Si los datos son muy pesados (ej. muchas fotos), intentamos limpiar para que quepa
+    localStorage.setItem(key, stringData);
+  } catch (e) {
+    console.warn("LocalStorage lleno, no se pudo guardar copia local de seguridad.");
+    // Si falla por cuota, intentamos guardar sin imágenes para al menos tener el texto
+    try {
+      if (key === WORK_ORDERS_KEY) {
+        const lightData = data.map(o => ({ ...o, images: [], clientSignature: null }));
+        localStorage.setItem(key, JSON.stringify(lightData));
+      }
+    } catch (e2) {
+      console.error("Definitivamente no hay espacio en el dispositivo.");
+    }
+  }
 };
 
 // --- ÓRDENES DE TRABAJO ---
@@ -36,8 +62,7 @@ export const getWorkOrders = async () => {
     if (error) throw error;
 
     const orders = data.map(mapToCamelCase);
-    // Guardar copia local como fallback
-    localStorage.setItem(WORK_ORDERS_KEY, JSON.stringify(orders));
+    safeSaveLocal(WORK_ORDERS_KEY, orders);
     return orders;
   } catch (error) {
     console.error("Error al leer órdenes de Supabase:", error);
@@ -49,16 +74,15 @@ export const getWorkOrders = async () => {
 export const saveWorkOrder = async (workOrder) => {
   try {
     const snakeOrder = mapToSnakeCase(workOrder);
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('work_orders')
-      .upsert(snakeOrder)
-      .select();
+      .upsert(snakeOrder);
 
     if (error) throw error;
     return await getWorkOrders();
   } catch (error) {
     console.error("Error al guardar orden en Supabase:", error);
-    // Guardado local de emergencia
+    // Fallback local
     const orders = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
     const index = orders.findIndex(o => o.id === workOrder.id);
     let updated;
@@ -67,7 +91,7 @@ export const saveWorkOrder = async (workOrder) => {
     } else {
       updated = [...orders, workOrder];
     }
-    localStorage.setItem(WORK_ORDERS_KEY, JSON.stringify(updated));
+    safeSaveLocal(WORK_ORDERS_KEY, updated);
     return updated;
   }
 };
@@ -85,7 +109,7 @@ export const deleteWorkOrder = async (id) => {
     console.error("Error al borrar orden en Supabase:", error);
     const orders = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
     const updated = orders.filter(o => o.id !== id);
-    localStorage.setItem(WORK_ORDERS_KEY, JSON.stringify(updated));
+    safeSaveLocal(WORK_ORDERS_KEY, updated);
     return updated;
   }
 };
@@ -102,7 +126,7 @@ export const getInventory = async () => {
     if (error) throw error;
 
     const items = data.map(mapToCamelCase);
-    localStorage.setItem(INVENTORY_KEY, JSON.stringify(items));
+    safeSaveLocal(INVENTORY_KEY, items);
     return items;
   } catch (error) {
     console.error("Error al leer inventario de Supabase:", error);
@@ -130,7 +154,7 @@ export const saveInventoryItem = async (item) => {
     } else {
       updated = [...inventory, item];
     }
-    localStorage.setItem(INVENTORY_KEY, JSON.stringify(updated));
+    safeSaveLocal(INVENTORY_KEY, updated);
     return updated;
   }
 };
@@ -148,7 +172,7 @@ export const deleteInventoryItem = async (id) => {
     console.error("Error al borrar item en Supabase:", error);
     const inventory = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
     const updated = inventory.filter(i => i.id !== id);
-    localStorage.setItem(INVENTORY_KEY, JSON.stringify(updated));
+    safeSaveLocal(INVENTORY_KEY, updated);
     return updated;
   }
 };

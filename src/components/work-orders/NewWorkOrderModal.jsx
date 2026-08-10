@@ -418,6 +418,21 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
               )}
             </div>
 
+            {/* TÉRMINOS Y CONDICIONES FIJOS EN PANTALLA */}
+            <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-xl space-y-3">
+              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Términos y Condiciones del Servicio</h4>
+              <div className="max-h-32 overflow-y-auto pr-2 text-[9px] text-slate-500 space-y-2 leading-relaxed custom-scrollbar">
+                <p><strong>1- PLAZOS:</strong> La Empresa dará cumplimiento a la solicitud de servicio dentro de un plazo estimado de hasta 10 (diez) días hábiles...</p>
+                <p><strong>2- RETIRO Y GUARDA:</strong> El equipo deberá ser retirado en un plazo máximo de 10 días hábiles posteriores a la fecha prevista de entrega...</p>
+                <p><strong>3- GARANTÍA:</strong> Las reparaciones cuentan con una garantía limitada de 90 (treinta) meses. Sujeto a términos de fabricante.</p>
+                <p><strong>4- PAGO Y ABANDONO:</strong> Los equipos se entregan sin excepción contra pago efectivo. Tras 90 días sin ser retirado, se configurará la condición de ABANDONO.</p>
+                <p><strong>5- ENTREGA:</strong> La restitución de los productos se efectuará contra la cancelación total de los importes facturados (diagnóstico, MO, repuestos, guarda).</p>
+                <p><strong>6- RESPONSABILIDAD:</strong> La Empresa no asume responsabilidad por procedencia. Exenta por casos fortuitos o fuerza mayor.</p>
+                <p><strong>7- LOGÍSTICA:</strong> Los costos de traslados, envíos y/o retiros correrán por cuenta y riesgo exclusivo del Cliente.</p>
+                <p><strong>8- CARGOS:</strong> Servicios de diagnóstico y fletes tienen un cargo de $20.000, exceptuando garantías.</p>
+              </div>
+            </div>
+
             {/* ACCIONES */}
             <div className="flex justify-end items-center gap-4 pt-6 border-t border-slate-800">
               <button

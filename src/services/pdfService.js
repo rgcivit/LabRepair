@@ -16,16 +16,12 @@ const TERMS_AND_CONDITIONS = [
   "8- CARGOS OPERATIVOS: Los servicios de diagnóstico, análisis de fallas, cotizaciones de componentes y gestión de fletes constituyen tareas con cargo, cuyo valor final quedará determinado en la orden de trabajo que al día de la fecha es de $20.000, quedando exceptuados únicamente los casos cubiertos por la garantía ."
 ];
 
-/**
- * Función auxiliar para renderizar términos y condiciones en letra chica.
- */
 const renderTermsAndConditions = (doc, startY) => {
-  doc.setFontSize(6);
+  doc.setFontSize(5);
   doc.setTextColor(100, 116, 139);
   let currentY = startY;
 
-  // Si estamos muy abajo, agregar página
-  if (currentY > 230) {
+  if (currentY > 220) {
     doc.addPage();
     currentY = 20;
   }
@@ -35,22 +31,16 @@ const renderTermsAndConditions = (doc, startY) => {
     else doc.setFont("helvetica", "normal");
 
     const lines = doc.splitTextToSize(line, 180);
-
-    // Verificar si las líneas caben en el resto de la página
-    if (currentY + (lines.length * 3) > 280) {
+    if (currentY + (lines.length * 3) > 285) {
       doc.addPage();
       currentY = 20;
     }
-
     doc.text(lines, 15, currentY);
-    currentY += (lines.length * 3.5);
+    currentY += (lines.length * 2.8) + 1;
   });
   return currentY;
 };
 
-/**
- * Función auxiliar para compartir un PDF en móviles o descargarlo en web.
- */
 const saveOrSharePDF = async (doc, filename) => {
   const pdfOutput = doc.output('datauristring');
   const sanitizedFilename = filename.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
@@ -63,17 +53,15 @@ const saveOrSharePDF = async (doc, filename) => {
         data: base64Data,
         directory: Directory.Cache
       });
-
       const fileUri = await Filesystem.getUri({
         directory: Directory.Cache,
         path: sanitizedFilename
       });
-
       await Share.share({
-        title: 'Enviar Documento',
-        text: `Se adjunta documento: ${sanitizedFilename}`,
+        title: 'Documento LabRepair',
+        text: `Se adjunta ${sanitizedFilename}`,
         url: fileUri.uri,
-        dialogTitle: 'Compartir documento con el cliente'
+        dialogTitle: 'Compartir con el cliente'
       });
     } catch (error) {
       console.error('Error al compartir PDF:', error);
@@ -84,9 +72,6 @@ const saveOrSharePDF = async (doc, filename) => {
   }
 };
 
-/**
- * Carga configuraciones de localStorage de forma segura.
- */
 const loadSettings = () => {
   let settings = {
     companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
@@ -100,56 +85,36 @@ const loadSettings = () => {
   };
   try {
     const saved = localStorage.getItem('estetica_lab_settings');
-    if (saved) {
-      settings = { ...settings, ...JSON.parse(saved) };
-    }
-  } catch (e) {
-    console.error("Error al cargar configuraciones dinámicas:", e);
-  }
+    if (saved) settings = { ...settings, ...JSON.parse(saved) };
+  } catch (e) {}
   return settings;
 };
 
-/**
- * Genera el Certificado de Control de Calidad (QC).
- */
 export const generateQCCertificate = (order) => {
   if (!order) return;
-
   const settings = loadSettings();
   const doc = new jsPDF();
   const bench = order.benchTest || {};
 
-  const colorPrimary = [30, 41, 59];
-  const colorSecondary = [6, 182, 212];
-  const colorText = [51, 65, 85];
-
-  doc.setFillColor(...colorPrimary);
+  doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 38, 'F');
-  doc.setFillColor(...colorSecondary);
+  doc.setFillColor(6, 182, 212);
   doc.rect(0, 38, 210, 2, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text(settings.companyName.toUpperCase(), 15, 16);
-  
-  doc.setFontSize(8.5);
-  doc.setFont("helvetica", "normal");
-  doc.text("SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL DE HARDWARE", 15, 23);
-  
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...colorSecondary);
   doc.setFontSize(10.5);
-  doc.text("CERTIFICADO DE CONTROL DE CALIDAD Y CALIBRACIÓN (QC OK)", 15, 31);
+  doc.text("CERTIFICADO DE CONTROL DE CALIDAD (QC OK)", 15, 31);
 
   if (settings.logo) {
     try { doc.addImage(settings.logo, 'PNG', 165, 6, 30, 16); } catch (e) {}
   }
 
-  doc.setTextColor(...colorPrimary);
-  doc.setFont("helvetica", "bold");
+  doc.setTextColor(30, 41, 59);
   doc.setFontSize(11);
-  doc.text("INFORMACIÓN DE LA ORDEN Y APARATOLOGÍA", 15, 52);
+  doc.text("INFORMACIÓN DE LA ORDEN", 15, 52);
   doc.line(15, 55, 195, 55);
 
   const data = [
@@ -158,20 +123,14 @@ export const generateQCCertificate = (order) => {
     ["Marca/Mod:", `${order.brand || ""} ${order.model || ""}`.trim() || order.brandModel, "S/N:", order.serialNumber]
   ];
 
-  doc.autoTable({
-    startY: 58,
-    body: data,
-    theme: 'plain',
-    styles: { fontSize: 8.5 }
-  });
+  doc.autoTable({ startY: 58, body: data, theme: 'plain', styles: { fontSize: 8.5 } });
 
-  const tableColumns = ["Parámetro Crítico Ensayado", "Medición de Laboratorio", "Unidad", "Estado Tolerancia"];
+  const tableColumns = ["Parámetro Crítico", "Medición", "Unidad", "Estado"];
   const tableRows = [
-    ["Flujo de Líquido Refrigerante", bench.coolantFlow || "N/D", "L/min", "Óptimo"],
-    ["Temperatura Cabezal/Celdas", bench.peltierTemp || "N/D", "°C", "Estable"],
-    ["Presión de Vacío / Succión", bench.vacuumPressure || "N/D", "bar", "Nominal"],
-    ["Tensión de Red / Fuentes", `${bench.voltageNet || "220"}V / ${bench.voltageHV || "24"}V`, "V", "Regulado"],
-    ["Resultado Operacional", order.qcPassed ? "APROBADO (QC OK)" : "CON OBSERVACIONES", "Resultado", "APTO"]
+    ["Flujo Refrigerante", bench.coolantFlow || "N/D", "L/min", "Óptimo"],
+    ["Temperatura Cabezal", bench.peltierTemp || "N/D", "°C", "Estable"],
+    ["Presión Vacío", bench.vacuumPressure || "N/D", "bar", "Nominal"],
+    ["Seguridad Eléctrica", order.qcPassed ? "APROBADO" : "OBSERVADO", "Resultado", "APTO"]
   ];
 
   doc.autoTable({
@@ -179,59 +138,37 @@ export const generateQCCertificate = (order) => {
     head: [tableColumns],
     body: tableRows,
     theme: 'grid',
-    headStyles: { fillColor: colorPrimary },
-    columnStyles: { 0: { fontStyle: 'bold' } }
+    headStyles: { fillColor: [30, 41, 59] }
   });
 
-  const finalY = doc.lastAutoTable.finalY + 15;
-  doc.setTextColor(...colorPrimary);
-  doc.setFont("helvetica", "bold");
-  doc.text("INFORME DE PROCEDIMIENTO Y CAUSA RAÍZ", 15, finalY);
-  doc.line(15, finalY + 2, 195, finalY + 2);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text(doc.splitTextToSize(order.diagnosis || "Sin observaciones adicionales.", 180), 15, finalY + 8);
+  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 15);
 
-  const sigY = 245;
-  doc.line(30, sigY, 85, sigY);
-  doc.line(125, sigY, 180, sigY);
-  doc.text(settings.technicianName, 40, sigY + 5);
-  doc.text("Firma Autorizada y Sello", 135, sigY + 5);
-
-  if (settings.signature) {
-    try { doc.addImage(settings.signature, 'PNG', 40, sigY - 20, 30, 15); } catch (e) {}
-  }
+  const sigY = 265;
+  if (doc.internal.getVerticalCoordinatePage(sigY) > 280) { doc.addPage(); }
+  doc.line(30, 265, 85, 265);
+  doc.line(125, 265, 180, 265);
+  doc.text(settings.technicianName, 40, 270);
+  doc.text("Firma y Sello Lab", 135, 270);
 
   saveOrSharePDF(doc, `${order.id}_Certificado_QC.pdf`);
 };
 
-/**
- * Genera el comprobante de ingreso (recepción) con firma del cliente.
- */
 export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 40, 'F');
 
-  // Logo
   const logoToUse = appLogo || settings.logo;
   if (logoToUse) {
-    try {
-      doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25);
-    } catch (e) {
-      console.error("Error al añadir logo al PDF de ingreso:", e);
-    }
+    try { doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25); } catch (e) {}
   }
 
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.text(settings.companyName.toUpperCase(), 15, 18);
   doc.setFontSize(9);
-  doc.setTextColor(6, 182, 212);
-  doc.text("COMPROBANTE DE RECEPCIÓN TÉCNICA E INGRESO A LABORATORIO", 15, 25);
+  doc.text("COMPROBANTE DE RECEPCIÓN TÉCNICA", 15, 25);
 
   doc.setTextColor(30, 41, 59);
   doc.setFontSize(10);
@@ -240,28 +177,19 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
 
   const data = [
     ["OT ID:", order.id],
-    ["Fecha de Ingreso:", order.entryDate],
+    ["Fecha:", order.entryDate],
     ["Cliente:", order.clientName],
-    ["Teléfono:", order.clientPhone],
-    ["Equipo:", order.deviceType],
-    ["Marca/Modelo:", order.brandModel],
-    ["Nro Serie:", order.serialNumber],
-    ["Falla Reportada:", order.issueDescription],
+    ["Equipo:", `${order.deviceType} ${order.brandModel}`],
+    ["S/N:", order.serialNumber],
+    ["Falla:", order.issueDescription],
     ["Accesorios:", order.accessories?.join(", ") || "Ninguno"]
   ];
 
-  doc.autoTable({
-    startY: 55,
-    body: data,
-    theme: 'plain',
-    styles: { fontSize: 9, cellPadding: 2 },
-    columnStyles: { 0: { fontStyle: 'bold', width: 40 } }
-  });
+  doc.autoTable({ startY: 55, body: data, theme: 'plain', styles: { fontSize: 9 }, columnStyles: { 0: { fontStyle: 'bold', width: 40 } } });
 
-  const finalY = doc.lastAutoTable.finalY + 12;
-  renderTermsAndConditions(doc, finalY);
+  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 12);
 
-  const sigY = 255;
+  const sigY = 265;
   doc.line(30, sigY, 85, sigY);
   doc.line(125, sigY, 180, sigY);
   doc.text("Firma del Cliente", 45, sigY + 5);
@@ -271,60 +199,40 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
     try { doc.addImage(clientSignatureBase64, 'PNG', 35, sigY - 25, 40, 20); } catch (e) {}
   }
 
-  saveOrSharePDF(doc, `Comprobante_Ingreso_${order.id}.pdf`);
+  saveOrSharePDF(doc, `Ingreso_${order.id}.pdf`);
 };
 
-/**
- * Genera el PDF del presupuesto para compartir.
- */
 export const generateBudgetPDF = async (order, appLogo) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 35, 'F');
 
-  // Logo
   const logoToUse = appLogo || settings.logo;
   if (logoToUse) {
-    try {
-      doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25);
-    } catch (e) {
-      console.error("Error al añadir logo al PDF de presupuesto:", e);
-    }
+    try { doc.addImage(logoToUse, 'JPEG', 170, 5, 25, 25); } catch (e) {}
   }
 
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.text("PRESUPUESTO DE SERVICIO TÉCNICO", 15, 20);
-  doc.setFontSize(9);
-  doc.text(`OT: ${order.id} | EQUIPO: ${order.deviceType} ${order.brandModel}`, 15, 28);
 
   doc.setTextColor(30, 41, 59);
   doc.text(`Cliente: ${order.clientName}`, 15, 45);
-  doc.text(`Diagnóstico Técnico:`, 15, 52);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text(doc.splitTextToSize(order.diagnosis || "Control y calibración general.", 180), 15, 57);
+  doc.setFontSize(9);
+  doc.text(doc.splitTextToSize(`Diagnóstico: ${order.diagnosis || "Control general."}`, 180), 15, 52);
 
   const items = order.sparePartsAssigned?.map(p => [p.name, p.qty, `$${p.price.toLocaleString()}`, `$${(p.qty * p.price).toLocaleString()}`]) || [];
-  items.push(["Mano de Obra / Ingeniería", "1", `$${(order.laborCost || 0).toLocaleString()}`, `$${(order.laborCost || 0).toLocaleString()}`]);
+  items.push(["Mano de Obra", "1", `$${(order.laborCost || 0).toLocaleString()}`, `$${(order.laborCost || 0).toLocaleString()}`]);
 
-  doc.autoTable({
-    startY: 65,
-    head: [["Descripción", "Cant.", "P.Unit", "Subtotal"]],
-    body: items,
-    theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59] }
-  });
+  doc.autoTable({ startY: 65, head: [["Descripción", "Cant.", "P.Unit", "Subtotal"]], body: items, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
 
   const total = (order.sparePartsAssigned?.reduce((acc, p) => acc + (p.qty * p.price), 0) || 0) + (order.laborCost || 0);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL PRESUPUESTO: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 12);
+  doc.text(`TOTAL: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 15);
 
-  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 22);
+  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 25);
 
   saveOrSharePDF(doc, `Presupuesto_${order.id}.pdf`);
 };
@@ -332,25 +240,16 @@ export const generateBudgetPDF = async (order, appLogo) => {
 export const exportInventoryToPDF = (inventory) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 40, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
   doc.text(settings.companyName.toUpperCase(), 15, 18);
   doc.setFontSize(9);
-  doc.text("INFORME DE INVENTARIO GENERAL Y CONTROL DE STOCK", 15, 25);
+  doc.text("REPORTE DE INVENTARIO", 15, 25);
 
-  const columns = ["ID", "Repuesto / Insumo", "Categoría", "Stock", "Precio"];
-  const rows = inventory.map(item => [item.id, item.name, item.category || "GENERAL", item.stock, `$ ${item.price}`]);
-
-  doc.autoTable({
-    startY: 45,
-    head: [columns],
-    body: rows,
-    theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59] }
-  });
+  const columns = ["ID", "Insumo", "Stock", "Precio"];
+  const rows = inventory.map(item => [item.id, item.name, item.stock, `$${item.price}`]);
+  doc.autoTable({ startY: 45, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
 
   saveOrSharePDF(doc, "Inventario_LabRepair.pdf");
 };
@@ -358,32 +257,16 @@ export const exportInventoryToPDF = (inventory) => {
 export const exportWorkOrdersToPDF = (orders) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 40, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
   doc.text(settings.companyName.toUpperCase(), 15, 18);
   doc.setFontSize(9);
-  doc.text("REPORTE HISTÓRICO Y LOGÍSTICA DE ÓRDENES DE TRABAJO (OT)", 15, 25);
+  doc.text("REPORTE DE ÓRDENES DE TRABAJO", 15, 25);
 
-  const columns = ["OT ID", "Equipo", "Cliente", "Ingreso", "Estado"];
-  const rows = orders.map(order => [
-    order.id,
-    `${order.deviceType || order.equipmentName} (${order.brandModel || order.brand})`,
-    order.clientName,
-    order.entryDate,
-    order.status
-  ]);
-
-  doc.autoTable({
-    startY: 45,
-    head: [columns],
-    body: rows,
-    theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59] },
-    styles: { fontSize: 8 }
-  });
+  const columns = ["ID", "Equipo", "Cliente", "Fecha", "Estado"];
+  const rows = orders.map(o => [o.id, `${o.deviceType || o.equipmentName}`, o.clientName, o.entryDate, o.status]);
+  doc.autoTable({ startY: 45, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] }, styles: { fontSize: 8 } });
 
   saveOrSharePDF(doc, "Reporte_Ordenes_LabRepair.pdf");
 };
@@ -391,30 +274,16 @@ export const exportWorkOrdersToPDF = (orders) => {
 export const exportSerialHistoryToPDF = (serialNumber, history) => {
   const settings = loadSettings();
   const doc = new jsPDF();
-
   doc.setFillColor(30, 41, 59);
   doc.rect(0, 0, 210, 35, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
-  doc.text(`HISTORIAL TÉCNICO - S/N: ${serialNumber}`, 15, 20);
+  doc.text(settings.companyName.toUpperCase(), 15, 18);
+  doc.setFontSize(9);
+  doc.text(`HISTORIAL S/N: ${serialNumber}`, 15, 25);
 
-  const columns = ["OT ID", "Fecha", "Falla Reportada", "Estado", "Diagnóstico"];
-  const rows = history.map(order => [
-    order.id,
-    order.entryDate,
-    order.reportedFailure || order.issueDescription || "N/D",
-    order.status,
-    order.benchTest?.observations || "N/D"
-  ]);
-
-  doc.autoTable({
-    startY: 40,
-    head: [columns],
-    body: rows,
-    theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59] },
-    styles: { fontSize: 7.5 }
-  });
+  const columns = ["ID", "Fecha", "Falla", "Estado"];
+  const rows = history.map(o => [o.id, o.entryDate, o.reportedFailure || o.issueDescription || "N/D", o.status]);
+  doc.autoTable({ startY: 40, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
 
   saveOrSharePDF(doc, `Historial_${serialNumber}.pdf`);
 };

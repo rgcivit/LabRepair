@@ -157,19 +157,28 @@ export default function App() {
     const resetInactivityTimer = () => {
       if (inactivityTimeout) clearTimeout(inactivityTimeout);
       inactivityTimeout = setTimeout(() => {
+        console.log("TIEMPO EXPIRADO: Cerrando sesión por inactividad");
         handleLogout();
-        console.log("Sesión cerrada por inactividad");
       }, FIFTEEN_MINUTES);
     };
 
-    // Eventos que reinician el contador de inactividad
-    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    // Eventos de usuario reales (evitamos mousemove que a veces oscila solo)
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Al volver a la app, verificar si pasó mucho tiempo (opcional)
+        resetInactivityTimer();
+      }
+    };
 
     activityEvents.forEach(event => {
       window.addEventListener(event, resetInactivityTimer);
     });
 
-    // Iniciar el temporizador al cargar el componente o loguearse
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Iniciar
     resetInactivityTimer();
 
     return () => {
@@ -177,6 +186,7 @@ export default function App() {
       activityEvents.forEach(event => {
         window.removeEventListener(event, resetInactivityTimer);
       });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentUser]);
 
