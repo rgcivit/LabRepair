@@ -57,17 +57,51 @@ const renderTermsAndConditions = (doc, startY) => {
 };
 
 const saveOrSharePDF = async (doc, filename) => {
-  const pdfOutput = doc.output('datauristring');
   const sanitizedFilename = filename.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
 
   if (Capacitor.isNativePlatform()) {
     try {
+      const pdfOutput = doc.output('datauristring');
       const base64Data = pdfOutput.split(',')[1];
-      await Filesystem.writeFile({ path: sanitizedFilename, data: base64Data, directory: Directory.Cache });
-      const fileUri = await Filesystem.getUri({ directory: Directory.Cache, path: sanitizedFilename });
-      await Share.share({ title: 'Documento LabRepair', text: `Se adjunta ${sanitizedFilename}`, url: fileUri.uri, dialogTitle: 'Compartir' });
-    } catch (error) { doc.save(sanitizedFilename); }
-  } else { doc.save(sanitizedFilename); }
+      await Filesystem.writeFile({
+        path: sanitizedFilename,
+        data: base64Data,
+        directory: Directory.Cache
+      });
+      const fileUri = await Filesystem.getUri({
+        directory: Directory.Cache,
+        path: sanitizedFilename
+      });
+      await Share.share({
+        title: 'Documento LabRepair',
+        text: `Se adjunta ${sanitizedFilename}`,
+        url: fileUri.uri,
+        dialogTitle: 'Compartir con el cliente'
+      });
+    } catch (error) {
+      console.error('Error sharing PDF on native:', error);
+      doc.save(sanitizedFilename);
+    }
+  } else {
+    // Browser fallback: Use Blob and URL.createObjectURL to avoid file:/// protocol blocks
+    try {
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      window.open(blobUrl, '_blank');
+
+      // Also provide a direct download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = sanitizedFilename;
+      link.click();
+
+      // Clean up the URL object after some time
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (e) {
+      console.error('Error opening PDF in browser:', e);
+      doc.save(sanitizedFilename);
+    }
+  }
 };
 
 /**
@@ -77,10 +111,17 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
   const settings = loadSettings();
   const doc = new jsPDF();
 
-  // 1. Header Industrial
+  // 1. Header Industrial con Logo
   doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 40, 'F');
   const logoToUse = appLogo || settings.logo;
-  if (logoToUse) { try { doc.addImage(logoToUse, 'JPEG', 165, 5, 30, 30); } catch (e) {} }
+  if (logoToUse) {
+    try {
+      // Embeber logo directamente para evitar 404 de archivos externos
+      doc.addImage(logoToUse, 'JPEG', 165, 5, 30, 30);
+    } catch (e) {
+      console.warn("Logo error in PDF:", e);
+    }
+  }
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14); doc.setFont("helvetica", "bold");
@@ -89,7 +130,7 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
   doc.text("COMPROBANTE DE RECEPCIÓN TÉCNICA E INGRESO A LABORATORIO", 15, 25);
   doc.text(`ORDEN DE TRABAJO: #${order.id} | FECHA: ${order.entryDate}`, 15, 32);
 
-  // 2. Bloques de Datos
+  // 2. Bloques de Datos del Cliente y Equipo
   doc.setTextColor(30, 41, 59); doc.setFontSize(10); doc.setFont("helvetica", "bold");
   doc.text("DATOS DEL CLIENTE Y EQUIPO", 15, 50); doc.line(15, 52, 195, 52);
 
@@ -104,36 +145,42 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
     columnStyles: { 0: { fontStyle: 'bold', width: 35 }, 2: { fontStyle: 'bold', width: 25 } }
   });
 
-  // 3. Falla y Observaciones
+  // 3. Falla y Observaciones (OBLIGATORIO)
   let currentY = doc.lastAutoTable.finalY + 10;
   doc.setFont("helvetica", "bold"); doc.text("FALLA REPORTADA / OBSERVACIONES:", 15, currentY);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  const desc = order.issueDescription || "Sin descripción técnica adicional.";
+  const desc = order.issueDescription || order.observations || "Sin descripción técnica detallada.";
   const splitDesc = doc.splitTextToSize(desc, 180);
   doc.text(splitDesc, 15, currentY + 6);
   currentY += 12 + (splitDesc.length * 4.5);
 
-  // 4. Accesorios e Insumos
+  // 4. Accesorios (OBLIGATORIO)
   doc.setFont("helvetica", "bold"); doc.text("ACCESORIOS INCLUIDOS:", 15, currentY);
   doc.setFont("helvetica", "normal");
-  doc.text(order.accessories?.join(", ") || "Ninguno detallado.", 15, currentY + 6);
+  const accText = Array.isArray(order.accessories) ? order.accessories.join(", ") : (order.accessories || "Ninguno detallado.");
+  doc.text(accText, 15, currentY + 6);
   currentY += 15;
 
-  // 5. Galería de Fotos (Letra Chica / Miniaturas)
+  // 5. Galería de Fotos
   if (Array.isArray(order.images) && order.images.length > 0) {
       doc.setFont("helvetica", "bold"); doc.text("FOTOS DE INSPECCIÓN VISUAL:", 15, currentY);
       let photoX = 15;
       order.images.forEach((img) => {
-          try { doc.addImage(img, 'JPEG', photoX, currentY + 4, 30, 30); photoX += 35; } catch(e){}
+          try {
+            doc.addImage(img, 'JPEG', photoX, currentY + 4, 30, 30);
+            photoX += 35;
+            if (photoX > 180) { photoX = 15; currentY += 35; }
+          } catch(e){}
       });
       currentY += 40;
   }
 
-  // 6. Términos y Condiciones
+  // 6. Términos del Servicio (OBLIGATORIO)
   currentY = renderTermsAndConditions(doc, currentY + 5);
 
   // 7. Firmas
   const sigY = 265;
+  if (doc.internal.getVerticalCoordinatePage(sigY) > 280) { doc.addPage(); }
   doc.setDrawColor(148, 163, 184);
   doc.line(30, sigY, 85, sigY); doc.line(125, sigY, 180, sigY);
   doc.setFontSize(8); doc.setTextColor(51, 65, 85);
@@ -148,11 +195,11 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
   }
 
   const sanitizedClient = (order.clientName || "Cliente").replace(/\s+/g, '_');
-  await saveOrSharePDF(doc, `Comprobante_Ingreso_${order.id}_${sanitizedClient}.pdf`);
+  await saveOrSharePDF(doc, `Ingreso_${order.id}_${sanitizedClient}.pdf`);
 };
 
 /**
- * PRESUPUESTO TÉCNICO (Individual)
+ * PRESUPUESTO TÉCNICO
  */
 export const generateBudgetPDF = async (order, appLogo) => {
   const settings = loadSettings();
@@ -218,19 +265,6 @@ export const exportInventoryToPDF = (inventory) => {
   saveOrSharePDF(doc, "Inventario_LabRepair.pdf");
 };
 
-export const exportSerialHistoryToPDF = (serialNumber, history) => {
-  const settings = loadSettings();
-  const doc = new jsPDF();
-  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 35, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFontSize(14); doc.setFont("helvetica", "bold");
-  doc.text(settings.companyName.toUpperCase(), 15, 18);
-  doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.text(`HISTORIAL TÉCNICO S/N: ${serialNumber}`, 15, 25);
-  const rows = history.map(o => [o.id, o.entryDate, o.reportedFailure || o.issueDescription || "N/D", o.status]);
-  doc.autoTable({ startY: 40, head: [["ID", "Fecha", "Falla", "Estado"]], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
-  saveOrSharePDF(doc, `Historial_${serialNumber}.pdf`);
-};
-
 export const generateQCCertificate = (order) => {
   if (!order) return;
   const settings = loadSettings();
@@ -250,4 +284,15 @@ export const generateQCCertificate = (order) => {
   const sigY = 265; doc.line(30, sigY, 85, sigY); doc.line(125, sigY, 180, sigY);
   doc.text(settings.technicianName, 40, sigY + 5); doc.text("Firma y Sello Lab", 135, sigY + 5);
   saveOrSharePDF(doc, `${order.id}_Certificado_QC.pdf`);
+};
+
+export const exportSerialHistoryToPDF = (serialNumber, history) => {
+  const settings = loadSettings();
+  const doc = new jsPDF();
+  doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 35, 'F');
+  doc.setTextColor(255, 255, 255); doc.text(settings.companyName.toUpperCase(), 15, 18);
+  doc.setFontSize(9); doc.text(`HISTORIAL TÉCNICO S/N: ${serialNumber}`, 15, 25);
+  const rows = history.map(o => [o.id, o.entryDate, o.reportedFailure || o.issueDescription || "N/D", o.status]);
+  doc.autoTable({ startY: 40, head: [["ID", "Fecha", "Falla", "Estado"]], body: rows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
+  saveOrSharePDF(doc, `Historial_${serialNumber}.pdf`);
 };
