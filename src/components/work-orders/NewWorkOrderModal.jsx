@@ -144,7 +144,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, existingOrders = [] }) => 
   const handleFinishWithSignature = async (signatureBase64) => {
     try {
       const orderToSave = { ...tempOrderData, clientSignature: signatureBase64 };
-      saveWorkOrder(orderToSave);
+      // Notar el await aquí para Supabase
+      await saveWorkOrder(orderToSave);
 
       // Generar y compartir el comprobante PDF
       await generateEntryReceipt(orderToSave, signatureBase64);

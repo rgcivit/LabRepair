@@ -26,45 +26,47 @@ export default function App() {
   const [passError, setPassError] = useState('');
   const [passSuccess, setPassSuccess] = useState('');
 
-  // Inicialización de estados desde localStorage
-  const [orders, setOrders] = useState(() => getWorkOrders());
-  const [inventory, setInventory] = useState(() => getInventory());
-  
-  // Control de modales y paneles
-  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null); // Orden seleccionada para "Ver Diagnóstico"
-  
-  // Estado de navegación y búsqueda
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'orders', 'diagnostic', 'repuestos', 'history', 'settings'
-  const [benchSubTab, setBenchSubTab] = useState('measurements'); // 'measurements' | 'budget' (Sub-pestañas de Diagnóstico)
-  const [filterQuery, setFilterQuery] = useState('');
-  
-  // Filtros de estado en la pestaña de Órdenes
-  const [statusFilter, setStatusFilter] = useState('TODOS');
+  // Inicialización de estados (ahora asíncronos con Supabase)
+  const [orders, setOrders] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Sincroniza datos en tiempo real si es necesario
-  const refreshData = () => {
-    setOrders(getWorkOrders());
-    setInventory(getInventory());
+  // Carga inicial de datos desde Supabase
+  useEffect(() => {
+    const initData = async () => {
+      setIsLoading(true);
+      const fetchedOrders = await getWorkOrders();
+      const fetchedInventory = await getInventory();
+      setOrders(fetchedOrders);
+      setInventory(fetchedInventory);
+      setIsLoading(false);
+    };
+    initData();
+  }, []);
+
+  // Sincroniza datos en tiempo real
+  const refreshData = async () => {
+    const fetchedOrders = await getWorkOrders();
+    const fetchedInventory = await getInventory();
+    setOrders(fetchedOrders);
+    setInventory(fetchedInventory);
   };
 
   // Callback de guardado de nueva OT (desde modal)
-  const handleCreateOrder = (newOrder) => {
-    const updated = saveWorkOrder(newOrder);
+  const handleCreateOrder = async (newOrder) => {
+    const updated = await saveWorkOrder(newOrder);
     setOrders(updated);
-    refreshData();
   };
 
   // Función para borrar orden de trabajo
-  const handleDeleteOrder = (id, e) => {
+  const handleDeleteOrder = async (id, e) => {
     if (e) e.stopPropagation();
     if (window.confirm('¿Estás seguro de que deseas eliminar esta Orden de Trabajo?')) {
-      const updatedList = deleteWorkOrder(id);
+      const updatedList = await deleteWorkOrder(id);
       setOrders(updatedList);
       if (selectedOrder?.id === id) {
         setSelectedOrder(null);
       }
-      refreshData();
     }
   };
 
@@ -76,15 +78,14 @@ export default function App() {
   };
 
   // Callback general para guardar/actualizar una OT
-  const handleSaveOT = (updatedOrder) => {
-    const updatedList = saveWorkOrder(updatedOrder);
+  const handleSaveOT = async (updatedOrder) => {
+    const updatedList = await saveWorkOrder(updatedOrder);
     setOrders(updatedList);
     setSelectedOrder(updatedOrder);
-    refreshData();
   };
 
   // Callback para imputar y descontar stock
-  const handleDiscountStock = (itemId, quantity) => {
+  const handleDiscountStock = async (itemId, quantity) => {
     const item = inventory.find(i => i.id === itemId);
     if (!item) return;
 
@@ -93,16 +94,14 @@ export default function App() {
       stock: Math.max(0, item.stock - quantity)
     };
     
-    const updatedInventory = saveInventoryItem(updatedItem);
+    const updatedInventory = await saveInventoryItem(updatedItem);
     setInventory(updatedInventory);
-    refreshData();
   };
 
   // Callback para repuestos de forma global
-  const handleSaveInventoryItemGlobal = (item) => {
-    const updatedInventory = saveInventoryItem(item);
+  const handleSaveInventoryItemGlobal = async (item) => {
+    const updatedInventory = await saveInventoryItem(item);
     setInventory(updatedInventory);
-    refreshData();
   };
 
   // Callback para restaurar base de datos
