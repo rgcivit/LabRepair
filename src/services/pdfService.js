@@ -9,28 +9,34 @@ import { Capacitor } from '@capacitor/core';
  */
 const saveOrSharePDF = async (doc, filename) => {
   const pdfOutput = doc.output('datauristring');
+  const sanitizedFilename = filename.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
 
   if (Capacitor.isNativePlatform()) {
     try {
       const base64Data = pdfOutput.split(',')[1];
-      const savedFile = await Filesystem.writeFile({
-        path: filename,
+      await Filesystem.writeFile({
+        path: sanitizedFilename,
         data: base64Data,
         directory: Directory.Cache
       });
 
+      const fileUri = await Filesystem.getUri({
+        directory: Directory.Cache,
+        path: sanitizedFilename
+      });
+
       await Share.share({
         title: 'Enviar Documento',
-        text: `Se adjunta documento: ${filename}`,
-        url: savedFile.uri,
+        text: `Se adjunta documento: ${sanitizedFilename}`,
+        url: fileUri.uri,
         dialogTitle: 'Compartir documento con el cliente'
       });
     } catch (error) {
       console.error('Error al compartir PDF:', error);
-      doc.save(filename);
+      doc.save(sanitizedFilename);
     }
   } else {
-    doc.save(filename);
+    doc.save(sanitizedFilename);
   }
 };
 

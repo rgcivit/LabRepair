@@ -253,6 +253,12 @@ export default function App() {
                 >
                   🔑 Cambio de contraseña
                 </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2.5 text-xs text-amber-500 hover:bg-slate-900 hover:text-amber-400 transition-colors flex items-center gap-2"
+                >
+                  🔒 Bloquear Sesión
+                </button>
                 <div className="border-t border-slate-900 my-1"></div>
                 <button
                   onClick={handleLogout}

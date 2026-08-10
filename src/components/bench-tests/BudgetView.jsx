@@ -183,7 +183,10 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   };
 
   // --- WHATSAPP TEMPLATES ---
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsApp = async () => {
+    // Primero generamos y compartimos el PDF formal
+    await handleDownloadPDF();
+
     const cleanPhone = selectedOT.clientPhone.replace(/[^\d+]/g, '');
     const formattedTotal = `${curSymbol} ${grandTotal.toLocaleString('es-AR')} ${currency}`;
     const partsTextList = imputedParts.length > 0
