@@ -145,6 +145,9 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
       // Guardar en Supabase
       await saveWorkOrder(finalData);
 
+      // GENERAR PDF AUTOMÁTICAMENTE
+      await generateEntryReceipt(finalData, cSig, logo);
+
       // Llamar al callback del padre para actualizar la UI
       if (onSave) onSave(finalData);
 

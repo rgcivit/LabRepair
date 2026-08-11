@@ -532,9 +532,9 @@ export default function App() {
                       type="button"
                       onClick={() => exportWorkOrdersToPDF(filteredOrders)}
                       className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-850 rounded-lg text-xs font-bold text-slate-300 shadow active:scale-95 transition-transform uppercase tracking-wider font-sans"
-                      title="Exportar órdenes de trabajo visibles a PDF"
+                      title="Exportar listado resumen de órdenes"
                     >
-                      📄 Exportar PDF
+                      📄 Reporte de Taller (Lista)
                     </button>
 
                     {activeTab === 'orders' && (
