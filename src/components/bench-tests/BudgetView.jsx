@@ -8,23 +8,23 @@ import logo from '../logo laboratorio.jpeg';
  */
 export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDiscountStock }) {
   // --- ESTADOS PRINCIPALES ---
-  const [laborCost, setLaborCost] = useState(0);
+  const [laborCost, setLaborCost] = useState('0');
   const [imputedParts, setImputedParts] = useState([]);
   const [budgetStatus, setBudgetStatus] = useState('PENDIENTE');
 
   // 1. Selector de repuesto actual
   const [selectedPartId, setSelectedPartId] = useState('');
-  const [addQty, setAddQty] = useState(1);
+  const [addQty, setAddQty] = useState('1');
   const [partQuality, setPartQuality] = useState('ORIGINAL'); // ORIGINAL | ALTERNATIVO | REACONDICIONADO
 
   // 2. Costos Adicionales y Finanzas (Tarjeta 2)
   const [currency, setCurrency] = useState('ARS'); // ARS | USD
   const [ivaRate, setIvaRate] = useState(0); // 0 | 10.5 | 21
-  const [discountValue, setDiscountValue] = useState(0);
+  const [discountValue, setDiscountValue] = useState('0');
   const [discountType, setDiscountType] = useState('PERCENT'); // PERCENT | FIXED
-  const [freightCost, setFreightCost] = useState(0);
-  const [diagnosisCost, setDiagnosisCost] = useState(0);
-  const [urgencyCost, setUrgencyCost] = useState(0);
+  const [freightCost, setFreightCost] = useState('0');
+  const [diagnosisCost, setDiagnosisCost] = useState('0');
+  const [urgencyCost, setUrgencyCost] = useState('0');
 
   // 3. Condiciones Comerciales (Tarjeta 3)
   const [validityDays, setValidityDays] = useState(10);
@@ -36,18 +36,18 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   // Cargar datos pre-existentes de la OT seleccionada
   useEffect(() => {
     if (selectedOT) {
-      setLaborCost(selectedOT.laborCost || 0);
+      setLaborCost((selectedOT.laborCost || 0).toString());
       setImputedParts(selectedOT.spareParts || selectedOT.sparePartsAssigned || []);
       setBudgetStatus(selectedOT.budgetStatus || 'PENDIENTE');
 
       const details = selectedOT.budgetDetails || {};
       setCurrency(details.currency || 'ARS');
       setIvaRate(details.ivaRate || 0);
-      setDiscountValue(details.discountValue || 0);
+      setDiscountValue((details.discountValue || 0).toString());
       setDiscountType(details.discountType || 'PERCENT');
-      setFreightCost(details.freightCost || 0);
-      setDiagnosisCost(details.diagnosisCost || 0);
-      setUrgencyCost(details.urgencyCost || 0);
+      setFreightCost((details.freightCost || 0).toString());
+      setDiagnosisCost((details.diagnosisCost || 0).toString());
+      setUrgencyCost((details.urgencyCost || 0).toString());
       setValidityDays(details.validityDays || 10);
       setEtaDays(details.etaDays || '48 hs hábiles');
       setPaymentTerms(details.paymentTerms || 'Contado / Transferencia');
@@ -69,14 +69,20 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
 
   // --- CÁLCULOS MATEMÁTICOS DE PRESUPUESTO ---
   const partsSubtotal = imputedParts.reduce((acc, part) => acc + (part.price * part.quantity), 0);
-  const baseSubtotal = parseFloat(laborCost || 0) + partsSubtotal;
-  const logisticsSubtotal = parseFloat(freightCost || 0) + parseFloat(diagnosisCost || 0) + parseFloat(urgencyCost || 0);
+  const laborCostNum = parseFloat(laborCost) || 0;
+  const freightCostNum = parseFloat(freightCost) || 0;
+  const diagnosisCostNum = parseFloat(diagnosisCost) || 0;
+  const urgencyCostNum = parseFloat(urgencyCost) || 0;
+  const discountValueNum = parseFloat(discountValue) || 0;
+
+  const baseSubtotal = laborCostNum + partsSubtotal;
+  const logisticsSubtotal = freightCostNum + diagnosisCostNum + urgencyCostNum;
   const preTaxSubtotal = baseSubtotal + logisticsSubtotal;
 
   // Cálculo de descuento
   const discountAmount = discountType === 'PERCENT'
-    ? preTaxSubtotal * (parseFloat(discountValue || 0) / 100)
-    : parseFloat(discountValue || 0);
+    ? preTaxSubtotal * (discountValueNum / 100)
+    : discountValueNum;
 
   const taxableBase = Math.max(0, preTaxSubtotal - discountAmount);
   const ivaAmount = taxableBase * (parseFloat(ivaRate || 0) / 100);
@@ -93,7 +99,9 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     const inventoryItem = inventory.find(item => item.id === selectedPartId);
     if (!inventoryItem) return;
 
-    if (inventoryItem.stock < addQty) {
+    const qtyToAdd = parseInt(addQty) || 1;
+
+    if (inventoryItem.stock < qtyToAdd) {
       alert(`Stock insuficiente de ${inventoryItem.name}. Solo quedan ${inventoryItem.stock} unidades disponibles.`);
       return;
     }
@@ -102,23 +110,23 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     let updatedParts = [...imputedParts];
 
     if (existingIndex > -1) {
-      updatedParts[existingIndex].quantity += addQty;
+      updatedParts[existingIndex].quantity += qtyToAdd;
     } else {
       updatedParts.push({
         id: inventoryItem.id,
         name: inventoryItem.name,
-        quantity: addQty,
+        quantity: qtyToAdd,
         price: inventoryItem.price,
         quality: partQuality
       });
     }
 
     setImputedParts(updatedParts);
-    onDiscountStock(selectedPartId, addQty);
+    onDiscountStock(selectedPartId, qtyToAdd);
 
     // Reset selectors
     setSelectedPartId('');
-    setAddQty(1);
+    setAddQty('1');
     setPartQuality('ORIGINAL');
   };
 
@@ -316,16 +324,16 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Cant. Imputar</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={addQty}
-                  onChange={(e) => setAddQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-center font-bold text-slate-200 focus:outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Cant. Imputar</label>
+              <input
+                type="number"
+                min="1"
+                value={addQty}
+                onChange={(e) => setAddQty(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-center font-bold text-slate-200 focus:outline-none"
+              />
+            </div>
             </div>
 
             <button
@@ -388,7 +396,7 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
               <input
                 type="number"
                 value={laborCost}
-                onChange={(e) => setLaborCost(Math.max(0, parseFloat(e.target.value) || 0))}
+                onChange={(e) => setLaborCost(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded pl-8 pr-12 py-2 text-xs font-bold text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
               <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-[9px] font-bold text-slate-650">{currency}</span>
@@ -433,7 +441,7 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
                 <input
                   type="number"
                   value={freightCost}
-                  onChange={(e) => setFreightCost(Math.max(0, parseFloat(e.target.value) || 0))}
+                  onChange={(e) => setFreightCost(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
                 />
               </div>
@@ -446,7 +454,7 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
                 <input
                   type="number"
                   value={diagnosisCost}
-                  onChange={(e) => setDiagnosisCost(Math.max(0, parseFloat(e.target.value) || 0))}
+                  onChange={(e) => setDiagnosisCost(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
                   title="Costo cobrable en caso de rechazo del presupuesto"
                 />
@@ -460,7 +468,7 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
                 <input
                   type="number"
                   value={urgencyCost}
-                  onChange={(e) => setUrgencyCost(Math.max(0, parseFloat(e.target.value) || 0))}
+                  onChange={(e) => setUrgencyCost(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
                 />
               </div>
@@ -475,7 +483,7 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
                 <input
                   type="number"
                   value={discountValue}
-                  onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                  onChange={(e) => setDiscountValue(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
                 />
               </div>

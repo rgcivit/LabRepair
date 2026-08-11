@@ -56,17 +56,17 @@ export default function InventoryView({ inventory, onSaveItem }) {
   // Manejo del cambio en campos del formulario
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    const isNumeric = name === 'stock' || name === 'minStock' || name === 'price';
+    // Permitir que el campo esté vacío mientras se edita para evitar el "0" fijo
     setForm(prev => ({
       ...prev,
-      [name]: isNumeric ? (parseFloat(value) || 0) : value
+      [name]: value
     }));
   };
 
   // Abre el modal para añadir un repuesto nuevo
   const handleOpenAdd = () => {
     setEditingItem(null);
-    setForm(INITIAL_FORM_STATE);
+    setForm({ ...INITIAL_FORM_STATE });
     setIsOpen(true);
   };
 
@@ -76,9 +76,9 @@ export default function InventoryView({ inventory, onSaveItem }) {
     setForm({
       name: item.name,
       category: getItemCategory(item),
-      stock: item.stock,
-      minStock: item.minStock,
-      price: item.price,
+      stock: item.stock.toString(),
+      minStock: item.minStock.toString(),
+      price: item.price.toString(),
       equipmentType: item.equipmentType || 'Criolipólisis'
     });
     setIsOpen(true);
@@ -93,7 +93,12 @@ export default function InventoryView({ inventory, onSaveItem }) {
   // Envío del formulario (Guardar o Añadir)
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.name.trim() || form.price < 0 || form.stock < 0) {
+
+    const stockVal = parseInt(form.stock, 10);
+    const minStockVal = parseInt(form.minStock, 10);
+    const priceVal = parseFloat(form.price);
+
+    if (!form.name.trim() || isNaN(priceVal) || isNaN(stockVal)) {
       alert("Por favor, ingrese valores válidos.");
       return;
     }
@@ -102,9 +107,9 @@ export default function InventoryView({ inventory, onSaveItem }) {
       ...editingItem, // Preservar ID si estamos editando
       name: form.name.trim(),
       category: form.category,
-      stock: parseInt(form.stock, 10),
-      minStock: parseInt(form.minStock, 10),
-      price: parseFloat(form.price),
+      stock: stockVal,
+      minStock: minStockVal,
+      price: priceVal,
       equipmentType: form.equipmentType
     };
 
