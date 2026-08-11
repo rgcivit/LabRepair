@@ -137,8 +137,8 @@ export default function InventoryView({ inventory, onSaveItem }) {
     // Filtro 2: Barra de búsqueda (Nombre, Código o Compatibilidad)
     const query = searchQuery.toLowerCase().trim();
     const matchesSearch = !query ||
-      item.id.toLowerCase().includes(query) ||
-      item.name.toLowerCase().includes(query) ||
+      (item.id && item.id.toString().toLowerCase().includes(query)) ||
+      (item.name && item.name.toLowerCase().includes(query)) ||
       (item.equipmentType && item.equipmentType.toLowerCase().includes(query));
 
     return matchesCategory && matchesSearch;
