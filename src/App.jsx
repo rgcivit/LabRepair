@@ -35,6 +35,7 @@ export default function App() {
 
   // Control de modales y paneles
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   // Estado de navegación y búsqueda
@@ -80,10 +81,15 @@ export default function App() {
     setInventory(fetchedInventory);
   };
 
-  // Callback de guardado de nueva OT (desde modal)
-  const handleCreateOrder = async (newOrder) => {
-    const updated = await saveWorkOrder(newOrder);
-    setOrders(updated);
+  const handleOpenNewOrder = () => {
+    setEditingOrder(null);
+    setIsNewOrderModalOpen(true);
+  };
+
+  const handleEditOrder = (order, e) => {
+    if (e) e.stopPropagation();
+    setEditingOrder(order);
+    setIsNewOrderModalOpen(true);
   };
 
   // Función para borrar orden de trabajo
@@ -334,7 +340,7 @@ export default function App() {
             )}
           </div>
           <button
-            onClick={() => setIsNewOrderModalOpen(true)}
+            onClick={handleOpenNewOrder}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 rounded-lg shadow-lg hover:shadow-cyan-400/20 active:scale-95 transition-all shrink-0"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
@@ -621,17 +627,30 @@ export default function App() {
                               <div className="flex items-center justify-end gap-2">
                                 <button
                                   onClick={() => handleViewDiagnostic(order)}
-                                  className="px-3 py-1.5 text-xs font-semibold text-cyan-400 hover:text-slate-950 bg-cyan-950/40 hover:bg-gradient-to-r hover:from-cyan-400 hover:to-cyan-300 border border-cyan-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
+                                  className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-950/30 rounded-lg transition-colors"
+                                  title="Diagnóstico"
                                 >
-                                  <span>Diagnóstico</span>
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12M11.42 7.7a1.5 1.5 0 011.5 1.5v2.12m0 0a1.5 1.5 0 01-1.5 1.5h-2.12" />
+                                  </svg>
                                 </button>
 
                                 <button
-                                  onClick={() => generateEntryReceipt(order, order.clientSignature, logo)}
-                                  className="px-3 py-1.5 text-xs font-bold text-emerald-400 hover:text-slate-950 bg-emerald-950/40 hover:bg-gradient-to-r hover:from-emerald-400 hover:to-emerald-300 border border-emerald-800/30 hover:border-transparent rounded-lg transition-all duration-150 inline-flex items-center gap-1"
+                                  onClick={(e) => handleEditOrder(order, e)}
+                                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-950/30 rounded-lg transition-colors"
+                                  title="Editar Ingreso"
                                 >
-                                  <span>Comprobante</span>
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                                  </svg>
+                                </button>
+
+                                <button
+                                  onClick={() => generateEntryReceipt(order, order.clientSignature, null)}
+                                  className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-lg transition-colors"
+                                  title="Comprobante"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                                   </svg>
                                 </button>
@@ -808,8 +827,8 @@ export default function App() {
       <NewWorkOrderModal 
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
-        onSave={handleCreateOrder}
-        existingOrders={orders}
+        onSave={refreshData}
+        editingOrder={editingOrder}
       />
 
       {/* MODAL CAMBIO DE CONTRASEÑA */}

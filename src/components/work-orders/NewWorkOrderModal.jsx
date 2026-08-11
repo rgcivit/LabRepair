@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import logo from "../logo laboratorio.jpeg";
 import { X, Wrench, User, Phone, Plus, Camera, Trash2, FileCheck } from "lucide-react";
 import { saveWorkOrder } from "../../services/storageService";
 import { generateEntryReceipt } from "../../services/pdfService";
@@ -26,29 +25,45 @@ const BRANDS = [
 const PRIORITIES = ["BAJA", "MEDIA", "ALTA"];
 const MAX_IMAGES = 4;
 
-const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
-  const [formData, setFormData] = useState({
-    clientName: "",
-    clientPhone: "",
-    deviceType: "",
-    customDeviceType: "",
-    brandModel: "",
-    customBrandModel: "",
-    serialNumber: "",
-    issueDescription: "",
-    estimatedBudget: "",
-    priority: "MEDIA"
+const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
+  const [formData, setFormData] = React.useState({
+    clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
+    brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
+    estimatedBudget: "", priority: "MEDIA"
   });
 
-  const [selectedAccessories, setSelectedAccessories] = useState([]);
-  const [customAccessory, setCustomAccessory] = useState("");
-  const [images, setImages] = useState([]);
+  const [selectedAccessories, setSelectedAccessories] = React.useState([]);
+  const [images, setImages] = React.useState([]);
+
+  // Cargar datos si estamos editando
+  React.useEffect(() => {
+    if (editingOrder) {
+      const isCustomType = !DEVICE_TYPES.includes(editingOrder.deviceType);
+      const isCustomBrand = !BRANDS.includes(editingOrder.brandModel);
+
+      setFormData({
+        clientName: editingOrder.clientName || "",
+        clientPhone: editingOrder.clientPhone || "",
+        deviceType: isCustomType ? "Otros" : (editingOrder.deviceType || ""),
+        customDeviceType: isCustomType ? editingOrder.deviceType : "",
+        brandModel: isCustomBrand ? "Otros" : (editingOrder.brandModel || ""),
+        customBrandModel: isCustomBrand ? editingOrder.brandModel : "",
+        serialNumber: editingOrder.serialNumber || "",
+        issueDescription: editingOrder.issueDescription || "",
+        estimatedBudget: editingOrder.estimatedBudget || "",
+        priority: editingOrder.priority || "MEDIA"
+      });
+      setSelectedAccessories(Array.isArray(editingOrder.accessories) ? editingOrder.accessories : []);
+      setImages(Array.isArray(editingOrder.images) ? editingOrder.images : []);
+    }
+  }, [editingOrder, isOpen]);
 
   // Gestión de firmas
-  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-  const [signatureType, setSignatureType] = useState("CLIENT"); // "CLIENT" | "TECH"
-  const [clientSig, setClientSig] = useState(null);
-  const [tempOrder, setTempOrder] = useState(null);
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = React.useState(false);
+  const [signatureType, setSignatureType] = React.useState("CLIENT");
+  const [clientSig, setClientSig] = React.useState(null);
+  const [tempOrder, setTempOrder] = React.useState(null);
+  const [customAccessory, setCustomAccessory] = React.useState("");
 
   if (!isOpen) return null;
 
@@ -100,8 +115,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
   const buildOrderData = () => {
     const type = formData.deviceType === "Otros" ? formData.customDeviceType : formData.deviceType;
     const brand = formData.brandModel === "Otros" ? formData.customBrandModel : formData.brandModel;
-    const orderId = `OT-${Math.floor(1000 + Math.random() * 9000)}`;
-    const today = new Date().toISOString().split("T")[0];
+    const orderId = editingOrder?.id || `OT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const today = editingOrder?.entryDate || new Date().toISOString().split("T")[0];
 
     return {
       id: orderId,
@@ -126,7 +141,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
       issue_description: formData.issueDescription,
       
       priority: formData.priority,
-      status: "INGRESADO",
+      status: editingOrder?.status || "INGRESADO",
       
       entryDate: today,
       entry_date: today,
@@ -185,7 +200,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
       await saveWorkOrder(finalData);
 
       // 2. Generar y descargar el PDF de ingreso
-      await generateEntryReceipt(finalData, cSig, logo);
+      await generateEntryReceipt(finalData, cSig, null);
 
       // 3. Notificar al componente padre para actualizar la tabla
       if (onSave) onSave(finalData);
