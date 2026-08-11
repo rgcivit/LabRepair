@@ -39,10 +39,13 @@ export default function SerialHistoryView({ workOrders }) {
   const suggestions = uniqueSerials.filter(item => {
     const q = query.toLowerCase().trim();
     if (!q) return false;
-    return item.serialNumber.toLowerCase().includes(q) || 
-           item.clientName.toLowerCase().includes(q) ||
-           item.model.toLowerCase().includes(q) ||
-           item.brand.toLowerCase().includes(q);
+
+    const sn = (item.serialNumber || "").toLowerCase();
+    const cn = (item.clientName || "").toLowerCase();
+    const md = (item.model || "").toLowerCase();
+    const br = (item.brand || "").toLowerCase();
+
+    return sn.includes(q) || cn.includes(q) || md.includes(q) || br.includes(q);
   });
 
   const handleSelectSerial = (serialNumber) => {

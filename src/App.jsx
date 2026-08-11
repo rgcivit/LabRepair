@@ -238,7 +238,9 @@ export default function App() {
 
   // --- FILTRADO DE ÓRDENES EN TIEMPO REAL ---
   const filteredOrders = orders.filter(order => {
-    const query = filterQuery.toLowerCase().trim();
+    if (!order) return false;
+    const query = (filterQuery || "").toLowerCase().trim();
+
     const matchesSearch = !query || 
       (order.id && order.id.toLowerCase().includes(query)) ||
       (order.clientName && order.clientName.toLowerCase().includes(query)) ||
