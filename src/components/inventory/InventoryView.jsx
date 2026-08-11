@@ -281,7 +281,11 @@ export default function InventoryView({ inventory, onSaveItem }) {
 
                       {/* Precio Unitario */}
                       <td className="py-4 px-4 text-right font-mono font-black text-cyan-400 text-sm">
-                        $ {item.price.toLocaleString('es-AR')} ARS
+                        {item.price === 0 ? (
+                          <span className="text-emerald-500 text-[10px] bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30 uppercase">Traído por Cliente</span>
+                        ) : (
+                          `$ ${item.price.toLocaleString('es-AR')} ARS`
+                        )}
                       </td>
 
                       {/* Ajuste Rápido y Edición */}
@@ -436,14 +440,15 @@ export default function InventoryView({ inventory, onSaveItem }) {
 
                 {/* Precio Unitario */}
                 <div>
-                  <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5 flex justify-between">
+                  <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5 flex justify-between items-center">
                     <span>Precio ($)</span>
                     <button
                       type="button"
                       onClick={() => setForm(prev => ({ ...prev, price: "0" }))}
-                      className="text-[8px] text-cyan-500 hover:text-cyan-400 font-black uppercase"
+                      className="px-1.5 py-0.5 bg-cyan-950/40 border border-cyan-800/30 rounded text-[7px] text-cyan-400 hover:bg-cyan-900/60 font-black uppercase transition-all"
+                      title="Establecer precio en $0 si el cliente trajo el repuesto"
                     >
-                      Es de Cliente
+                      Comprado por Cliente
                     </button>
                   </label>
                   <input
@@ -453,7 +458,7 @@ export default function InventoryView({ inventory, onSaveItem }) {
                     required
                     value={form.price}
                     onChange={handleFormChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 font-mono font-bold"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 font-mono font-bold focus:ring-1 focus:ring-cyan-500"
                   />
                 </div>
               </div>

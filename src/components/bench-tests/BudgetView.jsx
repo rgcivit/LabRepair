@@ -25,6 +25,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const [freightCost, setFreightCost] = useState('0');
   const [diagnosisCost, setDiagnosisCost] = useState('0');
   const [urgencyCost, setUrgencyCost] = useState('0');
+  const [diagnosisFeeMode, setDiagnosisFeeMode] = useState('NONE'); // NONE | PENDING | PAID
 
   // 3. Condiciones Comerciales (Tarjeta 3)
   const [validityDays, setValidityDays] = useState(10);
@@ -48,6 +49,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
       setFreightCost((details.freightCost || 0).toString());
       setDiagnosisCost((details.diagnosisCost || 0).toString());
       setUrgencyCost((details.urgencyCost || 0).toString());
+      setDiagnosisFeeMode(details.diagnosisFeeMode || 'NONE');
       setValidityDays(details.validityDays || 10);
       setEtaDays(details.etaDays || '48 hs hábiles');
       setPaymentTerms(details.paymentTerms || 'Contado / Transferencia');
@@ -79,14 +81,17 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const logisticsSubtotal = freightCostNum + diagnosisCostNum + urgencyCostNum;
   const preTaxSubtotal = baseSubtotal + logisticsSubtotal;
 
-  // Cálculo de descuento
+  // Cálculo de descuento comercial (Garantizar que se aplique correctamente)
   const discountAmount = discountType === 'PERCENT'
     ? preTaxSubtotal * (discountValueNum / 100)
     : discountValueNum;
 
-  const taxableBase = Math.max(0, preTaxSubtotal - discountAmount);
+  // Base imponible considerando descuento y cargo pendiente de revisión
+  const taxableBase = Math.max(0, preTaxSubtotal - discountAmount + (diagnosisFeeMode === 'PENDING' ? 20000 : 0));
   const ivaAmount = taxableBase * (parseFloat(ivaRate || 0) / 100);
-  const grandTotal = taxableBase + ivaAmount;
+
+  // El gran total incluye el descuento, el IVA y el ajuste del abono pagado
+  const grandTotal = taxableBase + ivaAmount + (diagnosisFeeMode === 'PAID' ? -20000 : 0);
 
   // Símbolo de moneda visual
   const curSymbol = currency === 'USD' ? 'US$' : '$';
@@ -154,6 +159,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
         freightCost,
         diagnosisCost,
         urgencyCost,
+        diagnosisFeeMode,
         validityDays,
         etaDays,
         paymentTerms,
@@ -181,6 +187,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
         freightCost,
         diagnosisCost,
         urgencyCost,
+        diagnosisFeeMode,
         validityDays,
         etaDays,
         paymentTerms,
@@ -193,7 +200,6 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
 
   // --- WHATSAPP TEMPLATES ---
   const handleSendWhatsApp = async () => {
-    // Primero generamos y compartimos el PDF formal
     await handleDownloadPDF();
 
     const cleanPhone = selectedOT.clientPhone.replace(/[^\d+]/g, '');
@@ -211,49 +217,25 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
 *Cliente:* ${selectedOT.clientName}
 
 🩺 *DETALLES DEL EQUIPO:*
-• *Aparatología:* ${selectedOT.equipmentType}
-• *Marca y Modelo:* ${selectedOT.brand} ${selectedOT.model}
+• *Aparatología:* ${selectedOT.equipmentType || selectedOT.deviceType}
+• *Marca y Modelo:* ${selectedOT.brandModel}
 • *N° de Serie:* ${selectedOT.serialNumber}
 
 🔍 *DIAGNÓSTICO:*
 ${selectedOT.diagnosis || 'Ingresado para control y diagnóstico técnico.'}
 
-💰 *DESGLOSE DE SERVICIOS:*
-• *Mano de Obra / Ingeniería:* ${curSymbol} ${parseFloat(laborCost).toLocaleString('es-AR')} ${currency}
-${freightCost > 0 ? `• *Gastos de Flete / Traslado:* ${curSymbol} ${parseFloat(freightCost).toLocaleString('es-AR')} ${currency}\n` : ''}${diagnosisCost > 0 ? `• *Servicio Diagnóstico Base:* ${curSymbol} ${parseFloat(diagnosisCost).toLocaleString('es-AR')} ${currency}\n` : ''}${urgencyCost > 0 ? `• *Recargo Reparación Express:* ${curSymbol} ${parseFloat(urgencyCost).toLocaleString('es-AR')} ${currency}\n` : ''}
-*Repuestos e Insumos:*
+💰 *DESGLOSE:*
+• *Ingeniería:* ${curSymbol} ${parseFloat(laborCost).toLocaleString('es-AR')}
+${freightCost > 0 ? `• *Flete:* ${curSymbol} ${parseFloat(freightCost).toLocaleString('es-AR')}\n` : ''}${diagnosisFeeMode === 'PENDING' ? `• *Abono Revisión:* + ${curSymbol} 20.000\n` : ''}${diagnosisFeeMode === 'PAID' ? `• *Crédito por Abono:* - ${curSymbol} 20.000\n` : ''}
+*Repuestos:*
 ${partsTextList}
 
 ---------------------------------------
-📌 *CONDICIONES:*
-• *Garantía del Trabajo:* ${warrantyMonths} meses.
-• *Validez de la Oferta:* ${validityDays} días.
-• *Plazo de Entrega (ETA):* ${etaDays}.
-• *Términos de Pago:* ${paymentTerms}.
+💵 *TOTAL FINAL:* ${formattedTotal}
 ---------------------------------------
-💵 *TOTAL CONSOLIDADO:* ${formattedTotal}
----------------------------------------
-
-Por favor, responda a este mensaje con la palabra *APROBADO* o *RECHAZADO* para continuar con el protocolo correspondiente.`;
-    } else if (whatsappTemplate === 'LISTO') {
-      mensaje = `✅ *DIAGNÓSTICO TÉCNICO FINALIZADO - LABREPAIR*
----------------------------------------
-Estimado cliente de *${selectedOT.clientName}*, le informamos que el diagnóstico de su equipo *${selectedOT.brand} ${selectedOT.model}* (S/N: ${selectedOT.serialNumber}) ha finalizado exitosamente en nuestro banco de pruebas.
-
-Se ha confeccionado un presupuesto formal detallado en formato PDF con todos los ensayos nominales y condiciones comerciales.
-
-💵 *TOTAL ESTIMADO:* ${formattedTotal}
-🚚 *ETA de Entrega:* ${etaDays}
-
-Quedamos a la espera de su confirmación para proceder con el inicio inmediato de las tareas de reparación.`;
-    } else if (whatsappTemplate === 'RECORDATORIO') {
-      mensaje = `⏳ *RECORDATORIO DE PRESUPUESTO PENDIENTE - LABREPAIR*
----------------------------------------
-Hola *${selectedOT.clientName}*, le enviamos este recordatorio cordial respecto al presupuesto de su equipo *${selectedOT.brand} ${selectedOT.model}* (OT: #${selectedOT.id}) enviado previamente.
-
-Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuestos requeridos en almacén, le solicitamos nos indique si el presupuesto de ${formattedTotal} se encuentra *APROBADO* o *RECHAZADO*.
-
-¡Cualquier duda técnica estamos para asesorarlo!`;
+Por favor, responda *APROBADO* para iniciar.`;
+    } else {
+      mensaje = `✅ *OT #${selectedOT.id} FINALIZADA* \nTotal: ${formattedTotal}. Se adjunta PDF.`;
     }
 
     const encodedMessage = encodeURIComponent(mensaje);
@@ -271,9 +253,8 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
           <h3 className="text-lg font-black text-white uppercase tracking-wider mt-0.5">
             Módulo de Presupuestación Comercial
           </h3>
-          <p className="text-xs text-slate-500">Transforme los ensayos técnicos en propuestas comerciales robustas y profesionales</p>
+          <p className="text-xs text-slate-500">Propuestas comerciales robustas y profesionales</p>
         </div>
-        
         <span className="bg-slate-900 px-3 py-1.5 text-xs font-mono font-bold text-cyan-400 rounded border border-slate-850 self-start sm:self-auto shadow-inner">
           OT: {selectedOT.id}
         </span>
@@ -288,23 +269,18 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
             1. Repuestos y Mano de Obra
           </h4>
 
-          {/* Selector de repuestos */}
           <form onSubmit={handleAddPart} className="space-y-3.5">
             <div>
               <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Insumo / Repuesto</label>
               <select
                 value={selectedPartId}
                 onChange={(e) => setSelectedPartId(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-300 focus:outline-none"
               >
                 <option value="">-- Seleccionar repuesto --</option>
                 {inventory.map((item) => (
-                  <option 
-                    key={item.id} 
-                    value={item.id}
-                    disabled={item.stock === 0}
-                  >
-                    {item.name} (${item.price.toLocaleString('es-AR')} ARS)
+                  <option key={item.id} value={item.id} disabled={item.stock === 0}>
+                    {item.name} {item.price === 0 ? "(Cliente)" : `($${item.price.toLocaleString('es-AR')})`}
                   </option>
                 ))}
               </select>
@@ -312,207 +288,152 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Clasificación / Calidad</label>
+                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Calidad</label>
                 <select
                   value={partQuality}
                   onChange={(e) => setPartQuality(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-2 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-2 text-xs text-slate-300 focus:outline-none"
                 >
-                  <option value="ORIGINAL">Nuevo Original</option>
+                  <option value="ORIGINAL">Original</option>
                   <option value="ALTERNATIVO">Alternativo</option>
                   <option value="REACONDICIONADO">Reacondicionado</option>
                 </select>
               </div>
-
-            <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Cant. Imputar</label>
-              <input
-                type="number"
-                min="1"
-                value={addQty}
-                onChange={(e) => setAddQty(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-center font-bold text-slate-200 focus:outline-none"
-              />
-            </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Cant.</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={addQty}
+                  onChange={(e) => setAddQty(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-center font-bold text-slate-200"
+                />
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={!selectedPartId}
-              className="w-full py-2 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-indigo-500 disabled:opacity-20 rounded shadow transition-all uppercase tracking-wider active:scale-95"
+              className="w-full py-2 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-indigo-500 rounded shadow uppercase tracking-wider"
             >
               ➕ Imputar Componente
             </button>
           </form>
 
-          {/* Tabla de Repuestos */}
           <div className="bg-slate-900/40 rounded-lg border border-slate-900 overflow-hidden">
             <div className="px-3 py-2 bg-slate-900/80 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
               Lista de Insumos Imputados
             </div>
-            
-            {imputedParts.length === 0 ? (
-              <div className="p-4 text-center text-[11px] text-slate-600 font-mono">
-                Sin repuestos imputados aún.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[11px] text-slate-400">
-                  <tbody className="divide-y divide-slate-900">
-                    {imputedParts.map((part, index) => (
-                      <tr key={`${part.id}-${part.quality}-${index}`} className="hover:bg-slate-900/30">
-                        <td className="py-2.5 px-3">
-                          <span className="font-mono text-cyan-400 font-bold text-[10px] block">{part.id}</span>
-                          <span className="font-bold text-slate-350">{part.name}</span>
-                          <span className={`inline-block px-1.5 py-0.2 rounded text-[8px] font-bold mt-1 ${part.quality === 'ORIGINAL' ? 'bg-indigo-950/60 text-indigo-400' : part.quality === 'ALTERNATIVO' ? 'bg-amber-950/60 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
-                            {part.quality}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-2 text-center font-bold text-slate-300">x{part.quantity}</td>
-                        <td className="py-2.5 px-2 text-right font-mono text-slate-400">{curSymbol}{part.price.toLocaleString('es-AR')}</td>
-                        <td className="py-2.5 px-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePart(part.id, part.quantity, part.quality)}
-                            className="text-rose-500 hover:text-rose-400 text-xs px-1.5 py-1 hover:bg-rose-950/20 rounded transition-colors"
-                            title="Eliminar"
-                          >
-                            🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="max-h-40 overflow-y-auto">
+              <table className="w-full text-left text-[11px] text-slate-400">
+                <tbody className="divide-y divide-slate-900">
+                  {imputedParts.map((part, index) => (
+                    <tr key={`${part.id}-${part.quality}-${index}`}>
+                      <td className="py-2.5 px-3">
+                        <span className="font-bold text-slate-350">{part.name}</span>
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-bold text-slate-300">x{part.quantity}</td>
+                      <td className="py-2.5 px-2 text-right font-mono">{curSymbol}{part.price.toLocaleString('es-AR')}</td>
+                      <td className="py-2.5 px-2 text-right">
+                        <button type="button" onClick={() => handleRemovePart(part.id, part.quantity, part.quality)} className="text-rose-500">🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          {/* Mano de Obra */}
-          <div className="border-t border-slate-900 pt-3.5 space-y-2">
-            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">Mano de Obra de Ingeniería</label>
+          <div>
+            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">Mano de Obra</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 font-bold text-slate-500">{curSymbol}</span>
               <input
                 type="number"
                 value={laborCost}
                 onChange={(e) => setLaborCost(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded pl-8 pr-12 py-2 text-xs font-bold text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded pl-8 pr-3 py-2 text-xs font-bold text-slate-200 font-mono focus:outline-none"
               />
-              <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-[9px] font-bold text-slate-650">{currency}</span>
             </div>
           </div>
         </div>
 
-        {/* TARJETA 2: COSTOS ADICIONALES (FLETE, DIAGNÓSTICO, IVA, DESCUENTOS) */}
+        {/* TARJETA 2: COSTOS ADICIONALES Y ABONO REVISIÓN */}
         <div className="bg-slate-950 border border-slate-850 rounded-xl p-5 shadow-xl space-y-4">
           <h4 className="text-xs font-black text-slate-350 uppercase tracking-wider flex items-center gap-2 border-b border-slate-900 pb-2">
             <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-            2. Costos Adicionales y Logística
+            2. Adicionales y Abonos
           </h4>
 
-          {/* Selector de moneda */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Descuento Taller</label>
+              <input
+                type="number"
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Tipo</label>
+              <select
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300"
+              >
+                <option value="PERCENT">%</option>
+                <option value="FIXED">{curSymbol}</option>
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">Moneda Comercial</label>
-            <div className="grid grid-cols-2 gap-2">
-              {['ARS', 'USD'].map((cur) => (
+            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Abono de Revisión / Diagnóstico ($20.000)</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'NONE', label: 'No Aplicar', color: 'slate' },
+                { id: 'PENDING', label: 'Pendiente (+)', color: 'cyan' },
+                { id: 'PAID', label: 'Ya Pagado (-)', color: 'emerald' }
+              ].map((mode) => (
                 <button
-                  key={cur}
+                  key={mode.id}
                   type="button"
-                  onClick={() => setCurrency(cur)}
-                  className={`py-1.5 text-xs font-bold rounded-lg border transition-all ${
-                    currency === cur
-                      ? 'bg-cyan-950/60 text-cyan-400 border-cyan-500/60'
+                  onClick={() => setDiagnosisFeeMode(mode.id)}
+                  className={`py-2 text-[8px] font-black uppercase rounded-lg border transition-all ${
+                    diagnosisFeeMode === mode.id
+                      ? `bg-${mode.color}-950 text-${mode.color}-400 border-${mode.color}-500/60 ring-1 ring-${mode.color}-500/20`
                       : 'bg-slate-900 border-slate-800 text-slate-500'
                   }`}
                 >
-                  {cur === 'ARS' ? 'ARS ($ pesos)' : 'USD (US$ dólares)'}
+                  {mode.label}
                 </button>
               ))}
             </div>
+            <p className="text-[7px] text-slate-600 mt-2 px-1 uppercase font-bold tracking-tighter">
+              * Pendiente: suma $20.000. Pagado: descuenta $20.000 del total.
+            </p>
           </div>
 
-          {/* Costos logísticos */}
-          <div className="space-y-3 pt-1">
+          <div className="space-y-3">
             <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Costo Flete / Retiro de Cabezal</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 font-mono text-slate-500 text-[10px]">{curSymbol}</span>
-                <input
-                  type="number"
-                  value={freightCost}
-                  onChange={(e) => setFreightCost(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
-                />
-              </div>
+              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Costo Flete</label>
+              <input
+                type="number"
+                value={freightCost}
+                onChange={(e) => setFreightCost(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-200"
+              />
             </div>
-
             <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Costo de Revisión / Diagnóstico de Banco</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 font-mono text-slate-500 text-[10px]">{curSymbol}</span>
-                <input
-                  type="number"
-                  value={diagnosisCost}
-                  onChange={(e) => setDiagnosisCost(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
-                  title="Costo cobrable en caso de rechazo del presupuesto"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Recargo Urgencia (Servicio Express)</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 font-mono text-slate-500 text-[10px]">{curSymbol}</span>
-                <input
-                  type="number"
-                  value={urgencyCost}
-                  onChange={(e) => setUrgencyCost(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Descuentos e IVA */}
-          <div className="border-t border-slate-900 pt-3.5 space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Descuento Comercial</label>
-                <input
-                  type="number"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Tipo de Descuento</label>
-                <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none"
-                >
-                  <option value="PERCENT">Porcentaje (%)</option>
-                  <option value="FIXED">Fijo ({curSymbol})</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">Alícuota IVA (Declaración Fiscal)</label>
+              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">IVA (%)</label>
               <div className="grid grid-cols-3 gap-2">
                 {[0, 10.5, 21].map((rate) => (
                   <button
                     key={rate}
                     type="button"
                     onClick={() => setIvaRate(rate)}
-                    className={`py-1 rounded border text-[11px] font-bold font-mono transition-all ${
-                      ivaRate === rate
-                        ? 'bg-amber-950/60 text-amber-400 border-amber-500/60'
-                        : 'bg-slate-900 border-slate-800 text-slate-500'
-                    }`}
+                    className={`py-1 rounded border text-xs font-mono transition-all ${ivaRate === rate ? 'bg-amber-950 text-amber-400 border-amber-500/60' : 'bg-slate-900 text-slate-500'}`}
                   >
                     {rate}%
                   </button>
@@ -522,183 +443,53 @@ Para poder cumplir con el *ETA de entrega de ${etaDays}* y reservar los repuesto
           </div>
         </div>
 
-        {/* TARJETA 3: RESUMEN COMERCIAL, TIEMPOS, GARANTÍA Y ACCIONES */}
+        {/* TARJETA 3: RESUMEN Y TOTALES */}
         <div className="bg-slate-950 border border-slate-850 rounded-xl p-5 shadow-xl space-y-4">
           <h4 className="text-xs font-black text-slate-350 uppercase tracking-wider flex items-center gap-2 border-b border-slate-900 pb-2">
-            <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
-            3. Oferta y Tiempos de Entrega
+            <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+            3. Resumen y Confirmación
           </h4>
 
-          {/* Plazos y garantía */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Validez Cotización</label>
-                <select
-                  value={validityDays}
-                  onChange={(e) => setValidityDays(parseInt(e.target.value))}
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
-                >
-                  <option value={5}>5 días</option>
-                  <option value={10}>10 días</option>
-                  <option value={15}>15 días</option>
-                  <option value={30}>30 días</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Plazo Garantía</label>
-                <select
-                  value={warrantyMonths}
-                  onChange={(e) => setWarrantyMonths(parseInt(e.target.value))}
-                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
-                >
-                  <option value={0}>Sin garantía</option>
-                  <option value={3}>3 meses</option>
-                  <option value={6}>6 meses</option>
-                  <option value={12}>12 meses</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Tiempo de Reparación Estimado (ETA)</label>
-              <input
-                type="text"
-                value={etaDays}
-                onChange={(e) => setEtaDays(e.target.value)}
-                placeholder="Ej: 48 hs hábiles"
-                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Condiciones de Pago</label>
-              <select
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
-              >
-                <option value="Contado / Transferencia">Contado / Transferencia Bancaria</option>
-                <option value="50% anticipo / 50% contra entrega">50% Anticipo / 50% Contra entrega</option>
-                <option value="3 Cuotas sin interés">3 Cuotas sin interés</option>
-                <option value="Efectivo en recepción">Efectivo en recepción</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Desglose Financiero */}
           <div className="bg-slate-900/60 p-4 border border-slate-900 rounded-xl space-y-2 font-mono text-[11px] text-slate-400">
             <div className="flex justify-between">
-              <span className="text-slate-500">Mano de Obra:</span>
-              <span>{curSymbol} {parseFloat(laborCost || 0).toLocaleString('es-AR')}</span>
+              <span>Subtotal:</span>
+              <span>{curSymbol} {preTaxSubtotal.toLocaleString('es-AR')}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Subtotal Repuestos:</span>
-              <span>{curSymbol} {partsSubtotal.toLocaleString('es-AR')}</span>
-            </div>
-            {logisticsSubtotal > 0 && (
-              <div className="flex justify-between">
-                <span className="text-slate-500">Servicios Adicionales:</span>
-                <span>{curSymbol} {logisticsSubtotal.toLocaleString('es-AR')}</span>
-              </div>
-            )}
-            {discountValue > 0 && (
-              <div className="flex justify-between text-rose-400">
-                <span>Atención Comercial:</span>
+
+            {parseFloat(discountValue || 0) > 0 && (
+              <div className="flex justify-between text-rose-400 font-bold">
+                <span>Descuento:</span>
                 <span>- {curSymbol} {discountAmount.toLocaleString('es-AR')}</span>
               </div>
             )}
-            {ivaRate > 0 && (
-              <div className="flex justify-between text-amber-500">
-                <span>IVA ({ivaRate}%):</span>
-                <span>{curSymbol} {ivaAmount.toLocaleString('es-AR')}</span>
+
+            {diagnosisFeeMode !== 'NONE' && (
+              <div className={`flex justify-between font-bold ${diagnosisFeeMode === 'PENDING' ? 'text-cyan-400' : 'text-emerald-400'}`}>
+                <span>{diagnosisFeeMode === 'PENDING' ? 'Diagnóstico (+)' : 'Seña/Abono (-)'}:</span>
+                <span>{curSymbol} 20.000</span>
               </div>
             )}
+
             <div className="border-t border-slate-800 pt-2.5 mt-2 flex items-center justify-between text-slate-200">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest font-sans">Total Neto</span>
-              <span className="text-sm font-black text-emerald-400">
-                {curSymbol} {grandTotal.toLocaleString('es-AR')} {currency}
+              <span className="text-xs font-black text-white uppercase tracking-widest font-sans">TOTAL NETO:</span>
+              <span className="text-sm font-black text-emerald-400 bg-slate-950 px-3 py-1 rounded border border-emerald-500/20">
+                {curSymbol} {grandTotal.toLocaleString('es-AR')}
               </span>
             </div>
           </div>
 
-          {/* Estado de Aprobación de Presupuesto */}
-          <div className="space-y-2 border-t border-slate-900 pt-3">
-            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">Estado Comercial</label>
-            <div className="grid grid-cols-3 gap-2">
-              {['PENDIENTE', 'APROBADO', 'RECHAZADO'].map((st) => {
-                const isSelected = budgetStatus === st;
-                let col = 'bg-slate-900 border-slate-800 text-slate-500';
-                if (isSelected) {
-                  if (st === 'PENDIENTE') col = 'bg-amber-950/60 text-amber-400 border-amber-500/60 ring-1 ring-amber-500/10';
-                  if (st === 'APROBADO') col = 'bg-emerald-950/60 text-emerald-400 border-emerald-500/60 ring-1 ring-emerald-500/10';
-                  if (st === 'RECHAZADO') col = 'bg-rose-950/60 text-rose-450 border-rose-500/60 ring-1 ring-rose-500/10';
-                }
-                return (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => setBudgetStatus(st)}
-                    className={`py-2 rounded border text-[10px] font-black uppercase tracking-wider text-center active:scale-95 transition-all ${col}`}
-                  >
-                    {st}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Botones de acción (WhatsApp, PDF, Guardar) */}
-          <div className="border-t border-slate-900 pt-4 space-y-2.5">
-            {/* Selector de plantilla de WhatsApp */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { type: 'ESTANDAR', label: 'Económico' },
-                { type: 'LISTO', label: 'Listo' },
-                { type: 'RECORDATORIO', label: 'Recordatorio' }
-              ].map(tpl => (
-                <button
-                  key={tpl.type}
-                  type="button"
-                  onClick={() => setWhatsappTemplate(tpl.type)}
-                  className={`py-1 text-[10px] font-bold rounded border transition-all ${
-                    whatsappTemplate === tpl.type
-                      ? 'bg-indigo-950 text-indigo-400 border-indigo-800'
-                      : 'bg-slate-900 border-slate-850 text-slate-500'
-                  }`}
-                  title={`Plantilla: ${tpl.type}`}
-                >
-                  💬 {tpl.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3.5">
-              <button
-                type="button"
-                onClick={handleSendWhatsApp}
-                className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-white bg-green-600 hover:bg-green-500 rounded-lg shadow-md transition-all active:scale-95 uppercase tracking-wider"
-              >
-                📲 WhatsApp
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadPDF}
-                className="flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-md transition-all active:scale-95 uppercase tracking-wider"
-              >
-                📄 Cotizar PDF
-              </button>
-            </div>
-
+          <div className="space-y-2.5">
             <button
               type="button"
               onClick={handleSaveBudget}
-              className="w-full py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 rounded-lg shadow-lg hover:brightness-110 transition-all uppercase tracking-wider active:scale-[0.98]"
+              className="w-full py-2.5 text-xs font-black text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 rounded uppercase shadow-lg active:scale-95 transition-all"
             >
-              💾 Guardar Presupuesto Técnico
+              💾 Guardar Presupuesto
             </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={handleSendWhatsApp} className="py-2 text-[10px] font-bold text-white bg-green-600 rounded uppercase">📲 WhatsApp</button>
+              <button onClick={handleDownloadPDF} className="py-2 text-[10px] font-bold text-white bg-indigo-600 rounded uppercase">📄 PDF</button>
+            </div>
           </div>
         </div>
 
