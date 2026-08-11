@@ -225,8 +225,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave }) => {
 
           <div className="flex justify-between items-center p-6 border-b border-slate-800 sticky top-0 bg-[#0f172a] z-10">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl overflow-hidden border border-slate-700 shadow-lg">
-                <img src={logo} alt="Logo" className="h-full w-full object-cover" />
+              <div className="p-3 bg-gradient-to-br from-cyan-600 to-blue-700 rounded-xl text-white shadow-lg">
+                <Wrench className="w-6 h-6" />
               </div>
               <div>
                 <h2 className="text-xl font-black text-white tracking-widest uppercase">Nuevo Ingreso</h2>
