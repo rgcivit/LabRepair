@@ -209,8 +209,10 @@ export const generateBudgetPDF = async (order, appLogo) => {
 
   const orderId = order.id || order.order_id || "S/D";
   const clientName = order.clientName || order.client_name || "N/D";
+  const clientPhone = order.clientPhone || order.client_phone || "N/D";
   const deviceType = order.deviceType || order.device_type || order.equipmentType || "N/D";
   const brandModel = order.brandModel || order.brand_model || order.brand || "N/D";
+  const serialNumber = order.serialNumber || order.serial_number || "S/D";
 
   doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 35, 'F');
   if (appLogo) { try { doc.addImage(appLogo, 'JPEG', 165, 5, 25, 25); } catch (e) {} }
@@ -222,7 +224,8 @@ export const generateBudgetPDF = async (order, appLogo) => {
   doc.text(`ORDEN DE TRABAJO: #${orderId} | EQUIPO: ${deviceType} ${brandModel}`, 15, 26);
 
   doc.setTextColor(30, 41, 59); doc.setFontSize(10);
-  doc.text(`CLIENTE: ${clientName}`, 15, 43);
+  doc.text(`CLIENTE: ${clientName} (${clientPhone})`, 15, 43);
+  doc.text(`S/N: ${serialNumber}`, 150, 43);
 
   doc.setFont("helvetica", "bold"); doc.text("DIAGNÓSTICO TÉCNICO DE INGENIERÍA:", 15, 50);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
@@ -233,12 +236,15 @@ export const generateBudgetPDF = async (order, appLogo) => {
   const spareParts = order.sparePartsAssigned || order.spare_parts || [];
   const laborCost = Number(order.laborCost || order.labor_cost || 0);
 
-  const budgetItems = spareParts.map(p => [
-    p.name || p.nombre || "Insumo", 
-    p.qty || p.cantidad || 1, 
-    `$${Number(p.price || p.precio || 0).toLocaleString()}`, 
-    `$${(Number(p.qty || 1) * Number(p.price || 0)).toLocaleString()}`
-  ]);
+  const budgetItems = spareParts.map(p => {
+    const isClientPart = Number(p.price || 0) === 0;
+    return [
+      isClientPart ? `${p.name} (Provisto por el cliente - $0)` : p.name,
+      p.qty || p.quantity || 1,
+      `$${Number(p.price || p.precio || 0).toLocaleString()}`,
+      `$${(Number(p.qty || 1) * Number(p.price || 0)).toLocaleString()}`
+    ];
+  });
   
   budgetItems.push(["Mano de Obra / Horas de Ingeniería Técnica", "1", `$${laborCost.toLocaleString()}`, `$${laborCost.toLocaleString()}`]);
 
@@ -250,13 +256,53 @@ export const generateBudgetPDF = async (order, appLogo) => {
     headStyles: { fillColor: [30, 41, 59] }
   });
 
+  let currentY = doc.lastAutoTable.finalY + 10;
+  const details = order.budgetDetails || {};
+
+  // Totales Detallados
   const partsTotal = spareParts.reduce((acc, p) => acc + (Number(p.qty || 1) * Number(p.price || 0)), 0);
-  const total = partsTotal + laborCost;
+  const subtotalBase = partsTotal + laborCost;
 
-  doc.setFontSize(12); doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL FINAL NETO: $${total.toLocaleString()}`, 130, doc.lastAutoTable.finalY + 12);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
 
-  renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 22);
+  doc.text(`SUBTOTAL BASE:`, 130, currentY);
+  doc.text(`$${subtotalBase.toLocaleString()}`, 190, currentY, { align: 'right' });
+  currentY += 5;
+
+  if (Number(details.discountValue || 0) > 0) {
+    const dType = details.discountType === 'PERCENT' ? '%' : '$';
+    const dVal = Number(details.discountValue);
+    const dAmt = details.discountType === 'PERCENT' ? (subtotalBase * (dVal / 100)) : dVal;
+
+    doc.setTextColor(200, 0, 0);
+    doc.text(`DTO. COMERCIAL (${dVal}${dType}):`, 130, currentY);
+    doc.text(`-$${dAmt.toLocaleString()}`, 190, currentY, { align: 'right' });
+    doc.setTextColor(30, 41, 59);
+    currentY += 5;
+  }
+
+  if (details.diagnosisFeeMode === 'PAID') {
+    doc.setTextColor(0, 120, 0);
+    doc.text(`ABONO PREVIO (PAGADO):`, 130, currentY);
+    doc.text(`-$20.000`, 190, currentY, { align: 'right' });
+    doc.setTextColor(30, 41, 59);
+    currentY += 5;
+  } else if (details.diagnosisFeeMode === 'PENDING') {
+    doc.text(`CARGO POR REVISIÓN:`, 130, currentY);
+    doc.text(`$20.000`, 190, currentY, { align: 'right' });
+    currentY += 5;
+  }
+
+  const grandTotal = Number(details.grandTotal || (subtotalBase - (details.diagnosisFeeMode === 'PAID' ? 20000 : 0)));
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.line(130, currentY - 1, 195, currentY - 1);
+  doc.text(`TOTAL FINAL NETO:`, 130, currentY + 4);
+  doc.text(`$${grandTotal.toLocaleString()}`, 190, currentY + 4, { align: 'right' });
+
+  renderTermsAndConditions(doc, currentY + 15);
 
   const sanitizedClient = clientName.replace(/\s+/g, '_');
   await saveOrSharePDF(doc, `Presupuesto_${orderId}_${sanitizedClient}.pdf`);

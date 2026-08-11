@@ -16,6 +16,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const [selectedPartId, setSelectedPartId] = useState('');
   const [addQty, setAddQty] = useState('1');
   const [partQuality, setPartQuality] = useState('ORIGINAL'); // ORIGINAL | ALTERNATIVO | REACONDICIONADO
+  const [isClientPartAddition, setIsClientPartAddition] = useState(false);
 
   // 2. Costos Adicionales y Finanzas (Tarjeta 2)
   const [currency, setCurrency] = useState('ARS'); // ARS | USD
@@ -114,6 +115,8 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     const existingIndex = imputedParts.findIndex(p => p.id === selectedPartId && p.quality === partQuality);
     let updatedParts = [...imputedParts];
 
+    const finalPrice = isClientPartAddition ? 0 : inventoryItem.price;
+
     if (existingIndex > -1) {
       updatedParts[existingIndex].quantity += qtyToAdd;
     } else {
@@ -121,7 +124,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
         id: inventoryItem.id,
         name: inventoryItem.name,
         quantity: qtyToAdd,
-        price: inventoryItem.price,
+        price: finalPrice,
         quality: partQuality
       });
     }
@@ -133,6 +136,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     setSelectedPartId('');
     setAddQty('1');
     setPartQuality('ORIGINAL');
+    setIsClientPartAddition(false);
   };
 
   const handleRemovePart = (partId, qty, quality) => {
@@ -309,6 +313,17 @@ Por favor, responda *APROBADO* para iniciar.`;
                   className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-center font-bold text-slate-200"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-1">
+              <input
+                type="checkbox"
+                id="clientPartCheck"
+                checked={isClientPartAddition}
+                onChange={(e) => setIsClientPartAddition(e.target.checked)}
+                className="w-3.5 h-3.5 accent-cyan-500"
+              />
+              <label htmlFor="clientPartCheck" className="text-[10px] text-slate-400 font-bold uppercase cursor-pointer">Insumo provisto por cliente ($0)</label>
             </div>
 
             <button
