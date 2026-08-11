@@ -436,7 +436,16 @@ export default function InventoryView({ inventory, onSaveItem }) {
 
                 {/* Precio Unitario */}
                 <div>
-                  <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5">Precio ($) <span className="text-red-500">*</span></label>
+                  <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5 flex justify-between">
+                    <span>Precio ($)</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, price: "0" }))}
+                      className="text-[8px] text-cyan-500 hover:text-cyan-400 font-black uppercase"
+                    >
+                      Es de Cliente
+                    </button>
+                  </label>
                   <input
                     type="number"
                     name="price"
