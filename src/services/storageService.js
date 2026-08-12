@@ -61,9 +61,21 @@ const mapToCamelCase = (obj) => {
 
 const safeSaveLocal = (key, data) => {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    const jsonString = JSON.stringify(data);
+    localStorage.setItem(key, jsonString);
   } catch (e) {
-    console.warn("LocalStorage lleno, ignorando copia local.");
+    console.error(`Error de almacenamiento (QuotaExceeded): El backup es demasiado grande para la memoria local del navegador/móvil.`);
+
+    // Intento de guardado de emergencia: Eliminar imágenes para salvar espacio (pesan el 90% del JSON)
+    if (key === WORK_ORDERS_KEY && Array.isArray(data)) {
+        try {
+            const lightData = data.map(o => ({ ...o, images: [], client_signature: null, tech_signature: null }));
+            localStorage.setItem(key, JSON.stringify(lightData));
+            console.warn("Se guardó una copia local reducida (sin imágenes) para no perder el registro de órdenes.");
+        } catch (innerE) {
+            localStorage.removeItem(key);
+        }
+    }
   }
 };
 

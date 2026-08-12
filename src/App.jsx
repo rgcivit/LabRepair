@@ -140,14 +140,18 @@ export default function App() {
 
   // Callback para restaurar base de datos
   const handleRestoreData = (backupPackage) => {
-    if (backupPackage.workOrders) {
-      localStorage.setItem('labrepair_work_orders', JSON.stringify(backupPackage.workOrders));
-    }
-    if (backupPackage.inventory) {
-      localStorage.setItem('labrepair_inventory', JSON.stringify(backupPackage.inventory));
-    }
-    if (backupPackage.settings) {
-      localStorage.setItem('estetica_lab_settings', JSON.stringify(backupPackage.settings));
+    try {
+      if (backupPackage.workOrders) {
+        localStorage.setItem('labrepair_work_orders', JSON.stringify(backupPackage.workOrders));
+      }
+      if (backupPackage.inventory) {
+        localStorage.setItem('labrepair_inventory', JSON.stringify(backupPackage.inventory));
+      }
+      if (backupPackage.settings) {
+        localStorage.setItem('estetica_lab_settings', JSON.stringify(backupPackage.settings));
+      }
+    } catch (e) {
+      console.error("No se pudo persistir todo el backup en LocalStorage (Espacio insuficiente). Los datos se cargarán en memoria para esta sesión.");
     }
     
     setOrders(backupPackage.workOrders || []);
@@ -239,15 +243,15 @@ export default function App() {
   // --- FILTRADO DE ÓRDENES EN TIEMPO REAL ---
   const filteredOrders = orders.filter(order => {
     if (!order) return false;
-    const query = (filterQuery || "").toLowerCase().trim();
+    const q = (filterQuery || "").toLowerCase().trim();
 
-    const matchesSearch = !query || 
-      (order.id && order.id.toLowerCase().includes(query)) ||
-      (order.clientName && order.clientName.toLowerCase().includes(query)) ||
-      (order.serialNumber && order.serialNumber.toLowerCase().includes(query)) ||
-      (order.brandModel && order.brandModel.toLowerCase().includes(query)) ||
-      (order.deviceType && order.deviceType.toLowerCase().includes(query));
+    const id = String(order.id || "").toLowerCase();
+    const client = String(order.clientName || "").toLowerCase();
+    const sn = String(order.serialNumber || "").toLowerCase();
+    const brand = String(order.brandModel || "").toLowerCase();
+    const type = String(order.deviceType || "").toLowerCase();
 
+    const matchesSearch = !q || id.includes(q) || client.includes(q) || sn.includes(q) || brand.includes(q) || type.includes(q);
     const matchesStatus = statusFilter === 'TODOS' || order.status === statusFilter;
 
     return matchesSearch && matchesStatus;
