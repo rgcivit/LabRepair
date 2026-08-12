@@ -163,19 +163,20 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const content = event.target.result.trim();
         const backupData = JSON.parse(content);
 
         if (backupData.workOrders && backupData.inventory) {
-          if (window.confirm("¿Está seguro de restaurar esta base de datos? Se sobrescribirán las órdenes e inventario actuales.")) {
-            onRestoreData(backupData);
+          if (window.confirm("¿Está seguro de restaurar esta base de datos? Se sobrescribirán las órdenes e inventario actuales en la nube y el dispositivo.")) {
+            // Mostrar indicador de carga si fuera necesario, pero el await bloqueará el hilo principal de ejecución
+            await onRestoreData(backupData);
             
             if (backupData.settings) {
               setSettings(backupData.settings);
             }
-            alert("Restauración de base de datos completada con éxito.");
+            alert("Restauración de base de datos completada con éxito. Los datos se han sincronizado con la nube.");
           }
         } else {
           alert("Estructura de archivo inválida: No se encontraron los datos de Órdenes o Inventario.");

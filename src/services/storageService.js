@@ -189,3 +189,40 @@ export const saveInventoryItem = async (item) => {
     return updated;
   }
 };
+
+/**
+ * Función crítica para restaurar un backup completo tanto en la nube (Supabase)
+ * como en el almacenamiento local.
+ */
+export const restoreFullBackup = async (backupData) => {
+  try {
+    console.log("Iniciando restauración masiva de backup...");
+
+    // 1. Restaurar Órdenes de Trabajo en Supabase
+    if (backupData.workOrders && Array.isArray(backupData.workOrders)) {
+      const snakeOrders = backupData.workOrders.map(o => mapToSnakeCase(o, 'work_orders'));
+      // Dividir en bloques si es muy grande (Supabase tiene límites por request)
+      const { error } = await supabase.from('work_orders').upsert(snakeOrders);
+      if (error) throw error;
+      console.log(`${snakeOrders.length} órdenes restauradas en la nube.`);
+    }
+
+    // 2. Restaurar Inventario en Supabase
+    if (backupData.inventory && Array.isArray(backupData.inventory)) {
+      const snakeInventory = backupData.inventory.map(i => mapToSnakeCase(i, 'inventory'));
+      const { error } = await supabase.from('inventory').upsert(snakeInventory);
+      if (error) throw error;
+      console.log(`${snakeInventory.length} productos de inventario restaurados en la nube.`);
+    }
+
+    // 3. Restaurar Configuraciones (LocalStorage)
+    if (backupData.settings) {
+      localStorage.setItem('estetica_lab_settings', JSON.stringify(backupData.settings));
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error en restauración de backup:", error);
+    return { success: false, error: error.message };
+  }
+};

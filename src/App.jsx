@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logo from './components/logo laboratorio.jpeg';
 import { supabase } from './services/supabaseClient';
-import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
@@ -139,24 +139,24 @@ export default function App() {
   };
 
   // Callback para restaurar base de datos
-  const handleRestoreData = (backupPackage) => {
+  const handleRestoreData = async (backupPackage) => {
     try {
-      if (backupPackage.workOrders) {
-        localStorage.setItem('labrepair_work_orders', JSON.stringify(backupPackage.workOrders));
-      }
-      if (backupPackage.inventory) {
-        localStorage.setItem('labrepair_inventory', JSON.stringify(backupPackage.inventory));
-      }
-      if (backupPackage.settings) {
-        localStorage.setItem('estetica_lab_settings', JSON.stringify(backupPackage.settings));
+      setIsLoading(true);
+      // 1. Ejecutar restauración masiva (Nube + Local)
+      const res = await restoreFullBackup(backupPackage);
+
+      if (res.success) {
+        // 2. Forzar actualización de la UI con los nuevos datos
+        await refreshData();
+      } else {
+        alert("Fallo al restaurar en la nube: " + res.error);
       }
     } catch (e) {
-      console.error("No se pudo persistir todo el backup en LocalStorage (Espacio insuficiente). Los datos se cargarán en memoria para esta sesión.");
+      console.error("Error al procesar restauración:", e);
+      alert("Error crítico al restaurar los datos.");
+    } finally {
+      setIsLoading(false);
     }
-    
-    setOrders(backupPackage.workOrders || []);
-    setInventory(backupPackage.inventory || []);
-    refreshData();
   };
 
   // --- CÁLCULO DILIGENTE DE MÉTRICAS (KPIs) ---
