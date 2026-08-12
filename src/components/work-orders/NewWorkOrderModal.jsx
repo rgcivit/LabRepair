@@ -38,7 +38,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
   const [formData, setFormData] = React.useState({
     clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
     brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
-    estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
+    cosmeticCondition: "", estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
   });
 
   const [selectedAccessories, setSelectedAccessories] = React.useState([]);
@@ -59,6 +59,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
         customBrandModel: isCustomBrand ? editingOrder.brandModel : "",
         serialNumber: editingOrder.serialNumber || "",
         issueDescription: editingOrder.issueDescription || "",
+        cosmeticCondition: editingOrder.cosmeticCondition || "",
         estimatedBudget: editingOrder.estimatedBudget || "",
         priority: editingOrder.priority || "MEDIA",
         status: editingOrder.status || "INGRESO"
@@ -69,7 +70,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
       setFormData({
         clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
         brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
-        estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
+        cosmeticCondition: "", estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
       });
       setSelectedAccessories([]);
       setImages([]);
@@ -157,7 +158,10 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
       
       issueDescription: formData.issueDescription,
       issue_description: formData.issueDescription,
-      
+
+      cosmeticCondition: formData.cosmeticCondition,
+      cosmetic_condition: formData.cosmeticCondition,
+
       priority: formData.priority,
       status: formData.status,
       
@@ -312,7 +316,12 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
 
               <div className="space-y-1">
                 <label className="block text-[10px] text-slate-500 font-bold uppercase ml-1">Falla Reportada e Inspección Inicial</label>
-                <textarea required rows={3} placeholder="Describa los síntomas reportados por el cliente..." value={formData.issueDescription} onChange={e => setFormData({...formData, issueDescription: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all" />
+                <textarea required rows={2} placeholder="Describa los síntomas reportados por el cliente..." value={formData.issueDescription} onChange={e => setFormData({...formData, issueDescription: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] text-slate-500 font-bold uppercase ml-1">Estado Cosmético al Ingresar</label>
+                <textarea rows={2} placeholder="Ej: Rayas en carcasa, pantalla con protector, sin golpes visibles..." value={formData.cosmeticCondition} onChange={e => setFormData({...formData, cosmeticCondition: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all" />
               </div>
             </div>
 

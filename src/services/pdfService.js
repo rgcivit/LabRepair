@@ -103,6 +103,7 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
   const priority = order.priority || "MEDIA";
   const entryDate = order.entryDate || order.entry_date || order.created_at || new Date().toLocaleDateString();
   const description = order.issueDescription || order.issue_description || order.observations || "Sin descripción técnica cargada.";
+  const cosmetic = order.cosmeticCondition || order.cosmetic_condition || "Sin observaciones cosméticas.";
 
   // Normalización de accesorios
   let accessoriesText = "Ninguno.";
@@ -151,19 +152,27 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
   doc.text(splitDesc, 15, currentY + 8);
   currentY += 10 + (splitDesc.length * 4.5);
 
-  // 4. Accesorios Recibidos
-  doc.setFont("helvetica", "bold"); doc.text("3. ACCESORIOS RECIBIDOS:", 15, currentY);
+  // 4. Estado Cosmético
+  doc.setFont("helvetica", "bold"); doc.text("3. ESTADO COSMÉTICO DEL EQUIPO:", 15, currentY);
+  doc.line(15, currentY + 2, 195, currentY + 2);
+  doc.setFont("helvetica", "normal");
+  const splitCosmetic = doc.splitTextToSize(cosmetic, 180);
+  doc.text(splitCosmetic, 15, currentY + 8);
+  currentY += 10 + (splitCosmetic.length * 4.5);
+
+  // 5. Accesorios Recibidos
+  doc.setFont("helvetica", "bold"); doc.text("4. ACCESORIOS RECIBIDOS:", 15, currentY);
   doc.line(15, currentY + 2, 195, currentY + 2);
   doc.setFont("helvetica", "normal");
   const splitAcc = doc.splitTextToSize(accessoriesText, 180);
   doc.text(splitAcc, 15, currentY + 8);
   currentY += 10 + (splitAcc.length * 4.5);
 
-  // 5. Fotos de Inspección (Si existen)
+  // 6. Fotos de Inspección (Si existen)
   const orderImages = Array.isArray(order.images) ? order.images : [];
   if (orderImages.length > 0) {
-      if (currentY > 190) { doc.addPage(); currentY = 20; }
-      doc.setFont("helvetica", "bold"); doc.text("4. EVIDENCIA FOTOGRÁFICA (INSPECCIÓN VISUAL):", 15, currentY);
+      if (currentY > 180) { doc.addPage(); currentY = 20; }
+      doc.setFont("helvetica", "bold"); doc.text("5. EVIDENCIA FOTOGRÁFICA (INSPECCIÓN VISUAL):", 15, currentY);
       doc.line(15, currentY + 2, 195, currentY + 2);
       
       let photoX = 15;
