@@ -17,16 +17,16 @@ export default function SerialHistoryView({ workOrders }) {
 
   // Obtener lista de números de serie únicos y sus metadatos del historial
   const serialsMap = workOrders.reduce((acc, order) => {
-    if (order.serialNumber) {
+    if (order && order.serialNumber) {
       const sn = order.serialNumber.trim();
       if (!acc[sn]) {
         acc[sn] = {
           serialNumber: sn,
-          brand: order.brand,
-          model: order.model,
-          equipmentType: order.equipmentType,
-          clientName: order.clientName,
-          clientPhone: order.clientPhone
+          brand: order.brand || order.brandModel || "",
+          model: order.model || "",
+          equipmentType: order.equipmentType || order.deviceType || "",
+          clientName: order.clientName || "",
+          clientPhone: order.clientPhone || ""
         };
       }
     }

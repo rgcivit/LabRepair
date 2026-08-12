@@ -442,24 +442,28 @@ export default function InventoryView({ inventory, onSaveItem }) {
                 <div>
                   <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5 flex justify-between items-center">
                     <span>Precio ($)</span>
-                    <button
-                      type="button"
-                      onClick={() => setForm(prev => ({ ...prev, price: "0" }))}
-                      className="px-1.5 py-0.5 bg-cyan-950/40 border border-cyan-800/30 rounded text-[7px] text-cyan-400 hover:bg-cyan-900/60 font-black uppercase transition-all"
-                      title="Establecer precio en $0 si el cliente trajo el repuesto"
-                    >
-                      Comprado por Cliente
-                    </button>
                   </label>
-                  <input
-                    type="number"
-                    name="price"
-                    min="0"
-                    required
-                    value={form.price}
-                    onChange={handleFormChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 font-mono font-bold focus:ring-1 focus:ring-cyan-500"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      name="price"
+                      min="0"
+                      required
+                      value={form.price}
+                      onChange={handleFormChange}
+                      disabled={form.price === "0"}
+                      className={`w-full border rounded p-2 text-xs font-mono font-bold focus:ring-1 focus:ring-cyan-500 transition-all ${form.price === "0" ? 'bg-zinc-800 border-zinc-700 text-emerald-400' : 'bg-zinc-900 border-zinc-800 text-zinc-100'}`}
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={form.price === "0"}
+                        onChange={(e) => setForm(prev => ({ ...prev, price: e.target.checked ? "0" : "" }))}
+                        className="w-3.5 h-3.5 accent-cyan-500"
+                      />
+                      <span className="text-[9px] text-zinc-500 group-hover:text-cyan-400 uppercase font-black tracking-tighter">Insumo provisto por cliente ($0)</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 

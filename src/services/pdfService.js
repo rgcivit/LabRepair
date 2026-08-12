@@ -256,51 +256,55 @@ export const generateBudgetPDF = async (order, appLogo) => {
     headStyles: { fillColor: [30, 41, 59] }
   });
 
-  let currentY = doc.lastAutoTable.finalY + 10;
+  let currentY = doc.lastAutoTable.finalY + 12;
   const details = order.budgetDetails || {};
 
-  // Totales Detallados
+  // Totales Detallados (Ajuste de Margen y Fuente)
   const partsTotal = spareParts.reduce((acc, p) => acc + (Number(p.qty || 1) * Number(p.price || 0)), 0);
   const subtotalBase = partsTotal + laborCost;
 
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
 
-  doc.text(`SUBTOTAL BASE:`, 130, currentY);
-  doc.text(`$${subtotalBase.toLocaleString()}`, 190, currentY, { align: 'right' });
-  currentY += 5;
+  const rightAlignX = 195;
+  const labelX = 130;
+
+  doc.text(`SUBTOTAL TAREAS E INSUMOS:`, labelX, currentY);
+  doc.text(`$${subtotalBase.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
+  currentY += 6;
 
   if (Number(details.discountValue || 0) > 0) {
     const dType = details.discountType === 'PERCENT' ? '%' : '$';
     const dVal = Number(details.discountValue);
     const dAmt = details.discountType === 'PERCENT' ? (subtotalBase * (dVal / 100)) : dVal;
 
-    doc.setTextColor(200, 0, 0);
-    doc.text(`DTO. COMERCIAL (${dVal}${dType}):`, 130, currentY);
-    doc.text(`-$${dAmt.toLocaleString()}`, 190, currentY, { align: 'right' });
+    doc.setTextColor(220, 38, 38); // Rojo Intenso
+    doc.text(`DESCUENTO COMERCIAL (${dVal}${dType}):`, labelX, currentY);
+    doc.text(`-$${dAmt.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
     doc.setTextColor(30, 41, 59);
-    currentY += 5;
+    currentY += 6;
   }
 
   if (details.diagnosisFeeMode === 'PAID') {
-    doc.setTextColor(0, 120, 0);
-    doc.text(`ABONO PREVIO (PAGADO):`, 130, currentY);
-    doc.text(`-$20.000`, 190, currentY, { align: 'right' });
+    doc.setTextColor(16, 185, 129); // Esmeralda
+    doc.text(`ABONO REVISIÓN (YA PAGADO):`, labelX, currentY);
+    doc.text(`-$20.000`, rightAlignX, currentY, { align: 'right' });
     doc.setTextColor(30, 41, 59);
-    currentY += 5;
+    currentY += 6;
   } else if (details.diagnosisFeeMode === 'PENDING') {
-    doc.text(`CARGO POR REVISIÓN:`, 130, currentY);
-    doc.text(`$20.000`, 190, currentY, { align: 'right' });
-    currentY += 5;
+    doc.text(`CARGO POR REVISIÓN/DIAG:`, labelX, currentY);
+    doc.text(`$20.000`, rightAlignX, currentY, { align: 'right' });
+    currentY += 6;
   }
 
-  const grandTotal = Number(details.grandTotal || (subtotalBase - (details.diagnosisFeeMode === 'PAID' ? 20000 : 0)));
+  const finalTotal = Number(details.grandTotal || (subtotalBase - (details.diagnosisFeeMode === 'PAID' ? 20000 : 0)));
 
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.line(130, currentY - 1, 195, currentY - 1);
-  doc.text(`TOTAL FINAL NETO:`, 130, currentY + 4);
-  doc.text(`$${grandTotal.toLocaleString()}`, 190, currentY + 4, { align: 'right' });
+  doc.setDrawColor(200, 200, 200);
+  doc.line(labelX, currentY - 2, rightAlignX, currentY - 2);
+  doc.text(`TOTAL FINAL NETO:`, labelX, currentY + 4);
+  doc.text(`$${finalTotal.toLocaleString()}`, rightAlignX, currentY + 4, { align: 'right' });
 
   renderTermsAndConditions(doc, currentY + 15);
 
