@@ -849,10 +849,10 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="bg-slate-950 border-t border-slate-850 py-3.5 px-6 text-center text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-        <p className="font-medium">© 2026 Laboratorio LabRepair Inc. Todos los derechos de calibración reservados.</p>
+        <p className="font-medium">Desarrollado por Rodrigo Guevara Civit - Konectaapp.com</p>
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-          <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Servidor Local Conectado • LocalStorage Activo</span>
+          <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Laboratorio LabRepair Inc. • Servidor Cloud Activo</span>
         </div>
       </footer>
 

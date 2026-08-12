@@ -110,6 +110,13 @@ export default function LoginView({ onLoginSuccess }) {
           >
             Cargar Rodrigo (Admin)
           </button>
+
+          <div className="mt-4 pt-4 border-t border-slate-900">
+            <p className="text-[9px] text-slate-700 uppercase font-black tracking-widest">
+              Desarrollado por Rodrigo Guevara Civit
+            </p>
+            <p className="text-[8px] text-slate-800 font-bold mt-0.5">Konectaapp.com</p>
+          </div>
         </div>
 
       </div>

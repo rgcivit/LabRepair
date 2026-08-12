@@ -23,7 +23,7 @@ const loadSettings = () => {
     companyAddress: 'Av. Juan de Garay 1420, CABA',
     companyPhone: '+54 11 5110-2200',
     companyEmail: 'calibracion@labrepair.com',
-    pdfFooter: 'SISTEMA DE GESTIÓN DE CALIDAD - CERTIFICACIÓN OPERACIONAL',
+    pdfFooter: 'Desarrollado por Rodrigo Guevara Civit - Konectaapp.com',
     technicianName: 'Ing. Responsable de Calibración',
     licenseNumber: 'Reg. Nac. Ing. Clínica Nro. 78241',
   };
