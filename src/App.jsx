@@ -176,42 +176,53 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
 
-    let inactivityTimeout;
     const FIFTEEN_MINUTES = 15 * 60 * 1000;
+    const CHECK_INTERVAL = 30000; // Revisar cada 30 segundos
 
-    const resetInactivityTimer = () => {
-      if (inactivityTimeout) clearTimeout(inactivityTimeout);
-      inactivityTimeout = setTimeout(() => {
-        console.log("TIEMPO EXPIRADO: Cerrando sesión por inactividad");
-        handleLogout();
-      }, FIFTEEN_MINUTES);
+    const updateLastActivity = () => {
+      localStorage.setItem('labrepair_last_activity', Date.now().toString());
     };
 
-    // Eventos de usuario reales (evitamos mousemove que a veces oscila solo)
-    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Al volver a la app, verificar si pasó mucho tiempo (opcional)
-        resetInactivityTimer();
+    const checkInactivity = () => {
+      const lastActivity = localStorage.getItem('labrepair_last_activity');
+      if (lastActivity) {
+        const diff = Date.now() - parseInt(lastActivity, 10);
+        if (diff > FIFTEEN_MINUTES) {
+          console.log("SESIÓN EXPIRADA: Forzando cierre por inactividad.");
+          handleLogout();
+        }
+      } else {
+        updateLastActivity();
       }
     };
 
+    // Eventos que reinician el contador
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
     activityEvents.forEach(event => {
-      window.addEventListener(event, resetInactivityTimer);
+      window.addEventListener(event, updateLastActivity);
     });
 
+    // Revisar al volver a la app (foreground)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
+      }
+    };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Iniciar
-    resetInactivityTimer();
+    // Revisar periódicamente mientras la app está abierta
+    const interval = setInterval(checkInactivity, CHECK_INTERVAL);
+
+    // Inicializar timestamp al cargar
+    updateLastActivity();
 
     return () => {
-      if (inactivityTimeout) clearTimeout(inactivityTimeout);
       activityEvents.forEach(event => {
-        window.removeEventListener(event, resetInactivityTimer);
+        window.removeEventListener(event, updateLastActivity);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
     };
   }, [currentUser]);
 
