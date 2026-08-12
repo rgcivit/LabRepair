@@ -113,7 +113,7 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
       workOrders,
       inventory,
       settings,
-      backupVersion: "2.0",
+      backupVersion: "2.1",
       exportTimestamp: new Date().toISOString()
     };
 
@@ -145,11 +145,16 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
         alert('No se pudo exportar la copia de seguridad.');
       }
     } else {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
-      const dlAnchorElem = document.createElement('a');
-      dlAnchorElem.setAttribute("href", dataStr);
-      dlAnchorElem.setAttribute("download", fileName);
-      dlAnchorElem.click();
+      // Navegador: Usar Blob para asegurar codificación UTF-8 limpia
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -160,25 +165,28 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const backupData = JSON.parse(event.target.result);
+        const content = event.target.result.trim();
+        const backupData = JSON.parse(content);
+
         if (backupData.workOrders && backupData.inventory) {
           if (window.confirm("¿Está seguro de restaurar esta base de datos? Se sobrescribirán las órdenes e inventario actuales.")) {
             onRestoreData(backupData);
             
-            // Si el backup contiene configuraciones, cargarlas
             if (backupData.settings) {
               setSettings(backupData.settings);
             }
             alert("Restauración de base de datos completada con éxito.");
           }
         } else {
-          alert("Estructura de archivo inválida. Falta el arreglo de órdenes o inventario.");
+          alert("Estructura de archivo inválida: No se encontraron los datos de Órdenes o Inventario.");
         }
       } catch (err) {
-        alert("Ocurrió un error al decodificar el archivo JSON de respaldo.");
+        console.error("Error al importar backup:", err);
+        alert("Ocurrió un error al decodificar el archivo JSON de respaldo. Asegúrese de que sea un archivo .json válido generado por el sistema.");
       }
     };
     reader.readAsText(file);
+    e.target.value = ""; // Resetear input
   };
 
   return (
