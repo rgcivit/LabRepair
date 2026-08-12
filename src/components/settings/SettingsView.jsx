@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getUsers, registerUser } from '../../services/authService';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 const DEFAULT_SETTINGS = {
   companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
@@ -105,7 +108,7 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
   };
 
   // --- COPIAS DE SEGURIDAD (BACKUP SYSTEM) ---
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
     const backupPackage = {
       workOrders,
       inventory,
@@ -114,11 +117,40 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
       exportTimestamp: new Date().toISOString()
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPackage, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `Backup_LabRepair_${new Date().toISOString().split('T')[0]}.json`);
-    dlAnchorElem.click();
+    const fileName = `Backup_LabRepair_${new Date().toISOString().split('T')[0]}.json`;
+    const jsonString = JSON.stringify(backupPackage, null, 2);
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Filesystem.writeFile({
+          path: fileName,
+          data: jsonString,
+          directory: Directory.Cache,
+          encoding: 'utf8'
+        });
+
+        const fileUri = await Filesystem.getUri({
+          directory: Directory.Cache,
+          path: fileName
+        });
+
+        await Share.share({
+          title: 'Copia de Seguridad LabRepair',
+          text: 'Se adjunta el archivo de respaldo del sistema.',
+          url: fileUri.uri,
+          dialogTitle: 'Exportar Copia de Seguridad'
+        });
+      } catch (error) {
+        console.error('Error al exportar backup en móvil:', error);
+        alert('No se pudo exportar la copia de seguridad.');
+      }
+    } else {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonString);
+      const dlAnchorElem = document.createElement('a');
+      dlAnchorElem.setAttribute("href", dataStr);
+      dlAnchorElem.setAttribute("download", fileName);
+      dlAnchorElem.click();
+    }
   };
 
   const handleImportJSON = (e) => {
