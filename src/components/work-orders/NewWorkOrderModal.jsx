@@ -22,14 +22,23 @@ const BRANDS = [
   "Starbene", "Cec", "Texel", "Sorisa", "Otros"
 ];
 
-const PRIORITIES = ["BAJA", "MEDIA", "ALTA"];
+const PRIORITIES = ["BAJA", "MEDIA", "ALTA", "URGENTE"];
+const STATUSES = [
+  { id: "INGRESO", label: "Ingreso" },
+  { id: "EN_DIAGNOSTICO", label: "En Diagnóstico" },
+  { id: "PRESUPUESTADO", label: "Presupuestado" },
+  { id: "ESPERANDO_REPUESTO", label: "Esperando Repuesto" },
+  { id: "EN_PRUEBAS", label: "En Pruebas" },
+  { id: "LISTO", label: "Listo" },
+  { id: "ENTREGADO", label: "Entregado" }
+];
 const MAX_IMAGES = 4;
 
 const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
   const [formData, setFormData] = React.useState({
     clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
     brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
-    estimatedBudget: "", priority: "MEDIA"
+    estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
   });
 
   const [selectedAccessories, setSelectedAccessories] = React.useState([]);
@@ -51,10 +60,19 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
         serialNumber: editingOrder.serialNumber || "",
         issueDescription: editingOrder.issueDescription || "",
         estimatedBudget: editingOrder.estimatedBudget || "",
-        priority: editingOrder.priority || "MEDIA"
+        priority: editingOrder.priority || "MEDIA",
+        status: editingOrder.status || "INGRESO"
       });
       setSelectedAccessories(Array.isArray(editingOrder.accessories) ? editingOrder.accessories : []);
       setImages(Array.isArray(editingOrder.images) ? editingOrder.images : []);
+    } else {
+      setFormData({
+        clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
+        brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
+        estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
+      });
+      setSelectedAccessories([]);
+      setImages([]);
     }
   }, [editingOrder, isOpen]);
 
@@ -141,7 +159,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
       issue_description: formData.issueDescription,
       
       priority: formData.priority,
-      status: editingOrder?.status || "INGRESADO",
+      status: formData.status,
       
       entryDate: today,
       entry_date: today,
@@ -293,8 +311,35 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
               {formData.brandModel === "Otros" && <input type="text" required placeholder="Especificar marca" value={formData.customBrandModel} onChange={e => setFormData({...formData, customBrandModel: e.target.value})} className="w-full bg-slate-950 border border-cyan-500/50 rounded-xl px-3 py-2 text-xs" />}
 
               <div className="space-y-1">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase ml-1">Falla Reportada e Inspección Inicial</label>
+                <label className="block text-[10px] text-slate-500 font-bold uppercase ml-1">Falla Reportada e Inspección Inicial</label>
                 <textarea required rows={3} placeholder="Describa los síntomas reportados por el cliente..." value={formData.issueDescription} onChange={e => setFormData({...formData, issueDescription: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all" />
+              </div>
+            </div>
+
+            {/* SECCIÓN ESTADO Y PRIORIDAD */}
+            <div className="space-y-4">
+              <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Gestión de la Orden</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-500 font-bold uppercase ml-1">Estado Actual de la Reparación</label>
+                  <select
+                    value={formData.status}
+                    onChange={e => setFormData({...formData, status: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-cyan-500"
+                  >
+                    {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-500 font-bold uppercase ml-1">Nivel de Prioridad</label>
+                  <select
+                    value={formData.priority}
+                    onChange={e => setFormData({...formData, priority: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-cyan-500"
+                  >
+                    {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
 

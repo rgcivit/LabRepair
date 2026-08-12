@@ -621,7 +621,23 @@ export default function App() {
                             </td>
 
                             <td className="py-4 px-4 text-center">
-                              <StatusBadge status={order.status} />
+                              <select
+                                value={order.status}
+                                onChange={async (e) => {
+                                  const newStatus = e.target.value;
+                                  const updatedOrder = { ...order, status: newStatus };
+                                  await handleSaveOT(updatedOrder);
+                                }}
+                                className="bg-slate-900 border border-slate-800 text-[11px] font-bold rounded-lg px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-300 uppercase tracking-tighter"
+                              >
+                                <option value="INGRESO">Ingreso</option>
+                                <option value="EN_DIAGNOSTICO">Diagnóstico</option>
+                                <option value="PRESUPUESTADO">Presupuestado</option>
+                                <option value="ESPERANDO_REPUESTO">Repuesto</option>
+                                <option value="EN_PRUEBAS">En Pruebas</option>
+                                <option value="LISTO">Listo</option>
+                                <option value="ENTREGADO">Entregado</option>
+                              </select>
                             </td>
 
                             <td className="py-4 px-4 text-center">
