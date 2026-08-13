@@ -25,6 +25,10 @@ const VALID_SETTINGS_COLUMNS = [
   "logo", "signature"
 ];
 
+const VALID_CLIENT_COLUMNS = [
+  "id", "name", "phone", "email", "address", "notes", "created_at"
+];
+
 const mapToSnakeCase = (obj, table = 'work_orders') => {
   const snake = {};
   const numericFields = ["estimated_budget", "labor_cost", "price", "cost", "stock", "min_stock"];
@@ -32,6 +36,7 @@ const mapToSnakeCase = (obj, table = 'work_orders') => {
   let whitelist;
   if (table === 'work_orders') whitelist = VALID_WORK_ORDER_COLUMNS;
   else if (table === 'inventory') whitelist = VALID_INVENTORY_COLUMNS;
+  else if (table === 'clients') whitelist = VALID_CLIENT_COLUMNS;
   else whitelist = VALID_SETTINGS_COLUMNS;
 
   for (const key in obj) {
@@ -250,6 +255,62 @@ export const saveAppSettings = async (settings) => {
   }
 };
 
+// --- CLIENTES ---
+
+const CLIENTS_KEY = "labrepair_clients";
+
+export const getClients = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .order('name');
+    if (error) throw error;
+    const clients = data.map(mapToCamelCase);
+    safeSaveLocal(CLIENTS_KEY, clients);
+    return clients;
+  } catch (error) {
+    console.error("Error al leer clientes:", error);
+    const localData = localStorage.getItem(CLIENTS_KEY);
+    return localData ? JSON.parse(localData) : [];
+  }
+};
+
+export const saveClient = async (client) => {
+  try {
+    const snakeClient = mapToSnakeCase(client, 'clients');
+    const { error } = await supabase.from('clients').upsert(snakeClient);
+    if (error) throw error;
+    return await getClients();
+  } catch (error) {
+    console.error("Error al guardar cliente:", error);
+    const localData = JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
+    const index = localData.findIndex(c => c.id === client.id);
+    let updated;
+    if (index >= 0) {
+      updated = localData.map(c => c.id === client.id ? { ...c, ...client } : c);
+    } else {
+      updated = [...localData, { ...client, id: client.id || Date.now().toString() }];
+    }
+    safeSaveLocal(CLIENTS_KEY, updated);
+    return updated;
+  }
+};
+
+export const deleteClient = async (id) => {
+  try {
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    if (error) throw error;
+    return await getClients();
+  } catch (error) {
+    console.error("Error al borrar cliente:", error);
+    const localData = JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
+    const updated = localData.filter(c => c.id !== id);
+    safeSaveLocal(CLIENTS_KEY, updated);
+    return updated;
+  }
+};
+
 /**
  * Función crítica para restaurar un backup completo tanto en la nube (Supabase)
  * como en el almacenamiento local.
@@ -275,7 +336,15 @@ export const restoreFullBackup = async (backupData) => {
       console.log(`${snakeInventory.length} productos de inventario restaurados en la nube.`);
     }
 
-    // 3. Restaurar Configuraciones (LocalStorage + Cloud)
+    // 3. Restaurar Clientes en Supabase
+    if (backupData.clients && Array.isArray(backupData.clients)) {
+      const snakeClients = backupData.clients.map(c => mapToSnakeCase(c, 'clients'));
+      const { error } = await supabase.from('clients').upsert(snakeClients);
+      if (error) throw error;
+      console.log(`${snakeClients.length} clientes restaurados en la nube.`);
+    }
+
+    // 4. Restaurar Configuraciones (LocalStorage + Cloud)
     if (backupData.settings) {
       localStorage.setItem('estetica_lab_settings', JSON.stringify(backupData.settings));
       await saveAppSettings(backupData.settings);

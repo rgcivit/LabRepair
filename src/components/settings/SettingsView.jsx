@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS = {
  * @param {Array} props.inventory - Listado del almacén para exportación.
  * @param {Function} props.onRestoreData - Callback para restaurar base de datos importada.
  */
-export default function SettingsView({ workOrders, inventory, onRestoreData }) {
+export default function SettingsView({ workOrders, inventory, clients, onRestoreData }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isSyncing, setIsSyncing] = useState(false);
   const [fileError, setFileError] = useState('');
@@ -111,13 +111,13 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     await saveAppSettings(updated);
   };
 
-  // --- COPIAS DE SEGURIDAD (BACKUP SYSTEM) ---
   const handleExportJSON = async () => {
     const backupPackage = {
       workOrders,
       inventory,
+      clients,
       settings,
-      backupVersion: "2.1",
+      backupVersion: "2.2",
       exportTimestamp: new Date().toISOString()
     };
 

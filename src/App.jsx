@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import logo from './components/logo laboratorio.jpeg';
 import { supabase } from './services/supabaseClient';
-import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
 import BudgetView from './components/bench-tests/BudgetView';
 import InventoryView from './components/inventory/InventoryView';
+import ClientsView from './components/clients/ClientsView';
 import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
 import { generateQCCertificate, exportWorkOrdersToPDF, generateEntryReceipt } from './services/pdfService';
@@ -31,6 +32,7 @@ export default function App() {
   // Inicialización de estados (ahora asíncronos con Supabase)
   const [orders, setOrders] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Control de modales y paneles
@@ -51,13 +53,15 @@ export default function App() {
     const initData = async () => {
       setIsLoading(true);
       // Cargar configuraciones, órdenes e inventario en paralelo
-      const [fetchedOrders, fetchedInventory] = await Promise.all([
+      const [fetchedOrders, fetchedInventory, fetchedClients] = await Promise.all([
         getWorkOrders(),
         getInventory(),
+        getClients(),
         getAppSettings() // Sincroniza configuraciones con la nube al iniciar
       ]);
       setOrders(fetchedOrders);
       setInventory(fetchedInventory);
+      setClients(fetchedClients);
       setIsLoading(false);
     };
 
@@ -81,8 +85,10 @@ export default function App() {
   const refreshData = async () => {
     const fetchedOrders = await getWorkOrders();
     const fetchedInventory = await getInventory();
+    const fetchedClients = await getClients();
     setOrders(fetchedOrders);
     setInventory(fetchedInventory);
+    setClients(fetchedClients);
   };
 
   const handleOpenNewOrder = () => {
@@ -140,6 +146,17 @@ export default function App() {
   const handleSaveInventoryItemGlobal = async (item) => {
     const updatedInventory = await saveInventoryItem(item);
     setInventory(updatedInventory);
+  };
+
+  // --- CLIENTES ---
+  const handleSaveClient = async (client) => {
+    const updated = await saveClient(client);
+    setClients(updated);
+  };
+
+  const handleDeleteClient = async (id) => {
+    const updated = await deleteClient(id);
+    setClients(updated);
   };
 
   // Callback para restaurar base de datos
@@ -449,6 +466,25 @@ export default function App() {
             </div>
             <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
               Activas
+            </span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('clientes'); }}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
+              activeTab === 'clientes'
+                ? 'bg-slate-900 text-cyan-400 font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.25 0 11-5.25 0 2.625 2.25 0 015.25 0z" />
+              </svg>
+              <span>Clientes</span>
+            </div>
+            <span className="bg-slate-800 text-[11px] text-slate-300 font-bold px-2 py-0.5 rounded-full">
+              {clients.length}
             </span>
           </button>
 
@@ -950,6 +986,14 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'clientes' && (
+            <ClientsView
+              clients={clients}
+              onSaveClient={handleSaveClient}
+              onDeleteClient={handleDeleteClient}
+            />
+          )}
+
           {activeTab === 'history' && (
             <SerialHistoryView 
               workOrders={orders}
@@ -960,6 +1004,7 @@ export default function App() {
             <SettingsView 
               workOrders={orders}
               inventory={inventory}
+              clients={clients}
               onRestoreData={handleRestoreData}
             />
           )}
