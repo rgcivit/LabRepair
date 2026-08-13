@@ -1047,6 +1047,7 @@ export default function App() {
         onClose={() => setIsNewOrderModalOpen(false)}
         onSave={refreshData}
         editingOrder={editingOrder}
+        clients={clients}
       />
 
       {/* MODAL CAMBIO DE CONTRASEÑA */}

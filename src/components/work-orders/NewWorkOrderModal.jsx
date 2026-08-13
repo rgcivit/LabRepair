@@ -34,7 +34,7 @@ const STATUSES = [
 ];
 const MAX_IMAGES = 4;
 
-const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
+const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = [] }) => {
   const [formData, setFormData] = React.useState({
     clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
     brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
@@ -43,6 +43,7 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
 
   const [selectedAccessories, setSelectedAccessories] = React.useState([]);
   const [images, setImages] = React.useState([]);
+  const [showClientSuggestions, setShowClientSuggestions] = React.useState(false);
 
   // Cargar datos si estamos editando
   React.useEffect(() => {
@@ -245,15 +246,22 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
       serialNumber: "",
       issueDescription: "",
       estimatedBudget: "",
-      priority: "MEDIA"
+      priority: "MEDIA",
+      status: "INGRESO"
     });
     setSelectedAccessories([]);
     setImages([]);
     setClientSig(null);
     setTempOrder(null);
     setIsSignatureModalOpen(false);
+    setShowClientSuggestions(false);
     onClose();
   };
+
+  const filteredClients = clients.filter(c => {
+    const q = formData.clientName.toLowerCase().trim();
+    return q.length > 0 && c.name.toLowerCase().includes(q) && c.name.toLowerCase() !== q;
+  });
 
   return (
     <>
@@ -278,9 +286,44 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder }) => {
             <div className="space-y-4">
               <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Datos del Cliente</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1 relative">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase ml-1">Nombre Completo *</label>
-                  <input type="text" required placeholder="Ej. Juan Perez" value={formData.clientName} onChange={e => setFormData({...formData, clientName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none transition-all" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Juan Perez"
+                    value={formData.clientName}
+                    onChange={e => {
+                      setFormData({...formData, clientName: e.target.value});
+                      setShowClientSuggestions(true);
+                    }}
+                    onFocus={() => setShowClientSuggestions(true)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
+                  />
+
+                  {/* SUGERENCIAS DE CLIENTES */}
+                  {showClientSuggestions && filteredClients.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-40 overflow-y-auto divide-y divide-slate-900">
+                      {filteredClients.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              clientName: c.name,
+                              clientPhone: c.phone || ""
+                            });
+                            setShowClientSuggestions(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-slate-900 text-xs transition-colors flex justify-between items-center"
+                        >
+                          <span className="font-bold text-slate-200">{c.name}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{c.phone}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase ml-1">Teléfono de Contacto *</label>
