@@ -45,6 +45,13 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
   const [images, setImages] = React.useState([]);
   const [showClientSuggestions, setShowClientSuggestions] = React.useState(false);
 
+  // Gestión de firmas
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = React.useState(false);
+  const [signatureType, setSignatureType] = React.useState("CLIENT");
+  const [clientSig, setClientSig] = React.useState(null);
+  const [tempOrder, setTempOrder] = React.useState(null);
+  const [customAccessory, setCustomAccessory] = React.useState("");
+
   // Sugerencias de clientes
   const filteredClients = React.useMemo(() => {
     if (!clients || !Array.isArray(clients)) return [];
@@ -59,6 +66,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
 
   // Cargar datos si estamos editando
   React.useEffect(() => {
+    if (!isOpen) return;
+
     if (editingOrder) {
       const isCustomType = !DEVICE_TYPES.includes(editingOrder.deviceType);
       const isCustomBrand = !BRANDS.includes(editingOrder.brandModel);
@@ -89,13 +98,6 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
       setImages([]);
     }
   }, [editingOrder, isOpen]);
-
-  // Gestión de firmas
-  const [isSignatureModalOpen, setIsSignatureModalOpen] = React.useState(false);
-  const [signatureType, setSignatureType] = React.useState("CLIENT");
-  const [clientSig, setClientSig] = React.useState(null);
-  const [tempOrder, setTempOrder] = React.useState(null);
-  const [customAccessory, setCustomAccessory] = React.useState("");
 
   if (!isOpen) return null;
 

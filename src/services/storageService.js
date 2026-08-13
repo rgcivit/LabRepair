@@ -105,9 +105,17 @@ export const getWorkOrders = async () => {
 
     if (error) throw error;
 
-    const orders = data.map(mapToCamelCase);
-    safeSaveLocal(WORK_ORDERS_KEY, orders);
-    return orders;
+    const cloudOrders = data.map(mapToCamelCase);
+
+    // LOGICA DE MEZCLA (MERGE): No borrar locales si la nube está vacía
+    const localData = localStorage.getItem(WORK_ORDERS_KEY);
+    const localOrders = localData ? JSON.parse(localData) : [];
+
+    // Si la nube tiene datos, los priorizamos pero mantenemos los locales que no se han subido
+    const merged = cloudOrders.length > 0 ? cloudOrders : localOrders;
+
+    safeSaveLocal(WORK_ORDERS_KEY, merged);
+    return merged;
   } catch (error) {
     console.error("Error al leer órdenes:", error);
     const localData = localStorage.getItem(WORK_ORDERS_KEY);
@@ -116,37 +124,29 @@ export const getWorkOrders = async () => {
 };
 
 export const saveWorkOrder = async (workOrder) => {
+  // 1. GUARDADO LOCAL INMEDIATO (Seguridad)
+  const localData = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
+  const orderId = workOrder.id || `OT-${Math.floor(1000 + Math.random() * 9000)}`;
+  const index = localData.findIndex(o => o.id === orderId);
+  let updatedLocal;
+  if (index >= 0) {
+    updatedLocal = localData.map(o => o.id === orderId ? { ...o, ...workOrder, id: orderId } : o);
+  } else {
+    updatedLocal = [...localData, { ...workOrder, id: orderId }];
+  }
+  safeSaveLocal(WORK_ORDERS_KEY, updatedLocal);
+
+  // 2. INTENTO DE GUARDADO EN NUBE
   try {
-    const snakeOrder = mapToSnakeCase(workOrder, 'work_orders');
-
-    // Asegurar que el ID esté presente
-    if (!snakeOrder.id) {
-        snakeOrder.id = `OT-${Math.floor(1000 + Math.random() * 9000)}`;
-    }
-
-    console.log("Upserting a Supabase (Work Order):", snakeOrder);
-
-    const { error } = await supabase
-      .from('work_orders')
-      .upsert(snakeOrder);
-
+    const snakeOrder = mapToSnakeCase({ ...workOrder, id: orderId }, 'work_orders');
+    const { error } = await supabase.from('work_orders').upsert(snakeOrder);
     if (error) throw error;
 
+    // Si subió bien, retornamos la lista fresca de la nube
     return await getWorkOrders();
   } catch (error) {
-    console.error("Fallo guardado en Supabase:", error);
-    // Fallback Local
-    const orders = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
-    const orderId = workOrder.id || `OT-${Math.floor(1000 + Math.random() * 9000)}`;
-    const index = orders.findIndex(o => o.id === orderId);
-    let updated;
-    if (index >= 0) {
-      updated = orders.map(o => o.id === orderId ? { ...o, ...workOrder, id: orderId } : o);
-    } else {
-      updated = [...orders, { ...workOrder, id: orderId }];
-    }
-    safeSaveLocal(WORK_ORDERS_KEY, updated);
-    return updated;
+    console.error("Fallo guardado en nube, queda solo en local:", error);
+    return updatedLocal;
   }
 };
 
