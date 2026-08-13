@@ -258,10 +258,17 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
     onClose();
   };
 
-  const filteredClients = clients.filter(c => {
+  // Sugerencias de clientes mejoradas
+  const filteredClients = React.useMemo(() => {
     const q = formData.clientName.toLowerCase().trim();
-    return q.length > 0 && c.name.toLowerCase().includes(q) && c.name.toLowerCase() !== q;
-  });
+    if (q.length === 0) return [];
+
+    // Filtrar clientes registrados
+    return clients.filter(c =>
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q))
+    ).slice(0, 5); // Limitar a 5 para mejor visibilidad
+  }, [clients, formData.clientName]);
 
   return (
     <>
@@ -303,12 +310,14 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
 
                   {/* SUGERENCIAS DE CLIENTES */}
                   {showClientSuggestions && filteredClients.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl z-50 max-h-40 overflow-y-auto divide-y divide-slate-900">
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-cyan-500/50 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] z-[100] max-h-48 overflow-y-auto divide-y divide-slate-800 animate-fadeIn">
+                      <div className="px-3 py-1.5 bg-slate-950/50 text-[9px] font-black text-cyan-500 uppercase tracking-widest border-b border-slate-800">Clientes Encontrados</div>
                       {filteredClients.map(c => (
                         <button
                           key={c.id}
                           type="button"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Evita que el onBlur del input cierre esto antes del click
                             setFormData({
                               ...formData,
                               clientName: c.name,
@@ -316,10 +325,15 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
                             });
                             setShowClientSuggestions(false);
                           }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-slate-900 text-xs transition-colors flex justify-between items-center"
+                          className="w-full text-left px-4 py-3 hover:bg-cyan-500/10 text-xs transition-all flex justify-between items-center group"
                         >
-                          <span className="font-bold text-slate-200">{c.name}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">{c.phone}</span>
+                          <div className="flex flex-col">
+                            <span className="font-black text-slate-200 group-hover:text-cyan-400 uppercase tracking-tight">{c.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{c.email || "Sin email"}</span>
+                          </div>
+                          <span className="text-[10px] bg-slate-950 px-2 py-1 rounded border border-slate-800 text-slate-400 font-mono group-hover:border-cyan-500/30 group-hover:text-cyan-400">
+                            {c.phone}
+                          </span>
                         </button>
                       ))}
                     </div>
