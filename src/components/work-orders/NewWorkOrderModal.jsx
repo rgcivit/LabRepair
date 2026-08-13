@@ -201,10 +201,18 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
   };
 
   const handleSaveWithoutSignatures = async () => {
-    const type = formData.deviceType === "Otros" ? formData.customDeviceType : formData.deviceType;
-    if (!formData.clientName || !type) return alert("Complete los campos obligatorios (Nombre y Tipo de equipo) antes de guardar.");
+    const isOtherType = formData.deviceType === "Otros";
+    const isOtherBrand = formData.brandModel === "Otros";
+
+    const type = isOtherType ? formData.customDeviceType : formData.deviceType;
+    const brand = isOtherBrand ? formData.customBrandModel : formData.brandModel;
+
+    if (!formData.clientName || !type || (isOtherType && !formData.customDeviceType) || (isOtherBrand && !formData.customBrandModel)) {
+      return alert("Complete los campos obligatorios. Si seleccionó 'Otros', debe especificar el valor.");
+    }
 
     const newOrder = buildOrderData();
+    // Forzamos que guarde sin firmas
     await finalizeOrder(null, null, newOrder);
   };
 
@@ -234,13 +242,13 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
       };
 
       // 1. Guardar en Supabase / Storage
-      await saveWorkOrder(finalData);
+      const updatedList = await saveWorkOrder(finalData);
 
       // 2. Generar y descargar el PDF de ingreso
       await generateEntryReceipt(finalData, cSig, null);
 
       // 3. Notificar al componente padre para actualizar la tabla
-      if (onSave) onSave(finalData);
+      if (onSave) await onSave(updatedList);
 
       handleClose();
     } catch (err) {

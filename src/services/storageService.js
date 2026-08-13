@@ -2,10 +2,11 @@ import { supabase } from './supabaseClient';
 
 const WORK_ORDERS_KEY = "labrepair_work_orders";
 const INVENTORY_KEY = "labrepair_inventory";
+const CLIENTS_KEY = "labrepair_clients";
+const SETTINGS_LOCAL_KEY = 'estetica_lab_settings';
 
 /**
- * Lista blanca de columnas permitidas en la tabla work_orders para evitar errores 400
- * si enviamos campos extra que no existen en la base de datos.
+ * Lista blanca de columnas permitidas en Supabase
  */
 const VALID_WORK_ORDER_COLUMNS = [
   "id", "client_name", "client_phone", "device_type", "brand_model",
@@ -29,35 +30,32 @@ const VALID_CLIENT_COLUMNS = [
   "id", "name", "phone", "email", "address", "notes", "created_at"
 ];
 
+/**
+ * Mapeo de objetos JS a Snake Case para PostgreSQL
+ */
 const mapToSnakeCase = (obj, table = 'work_orders') => {
+  if (!obj) return {};
   const snake = {};
   const numericFields = ["estimated_budget", "labor_cost", "price", "cost", "stock", "min_stock"];
 
-  let whitelist;
-  if (table === 'work_orders') whitelist = VALID_WORK_ORDER_COLUMNS;
-  else if (table === 'inventory') whitelist = VALID_INVENTORY_COLUMNS;
+  let whitelist = VALID_WORK_ORDER_COLUMNS;
+  if (table === 'inventory') whitelist = VALID_INVENTORY_COLUMNS;
   else if (table === 'clients') whitelist = VALID_CLIENT_COLUMNS;
-  else whitelist = VALID_SETTINGS_COLUMNS;
+  else if (table === 'settings') whitelist = VALID_SETTINGS_COLUMNS;
 
   for (const key in obj) {
-    // 1. Convertir key a snake_case
     const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-
-    // 2. Filtrar solo columnas válidas
-    if (!whitelist.includes(snakeKey)) {
-      continue;
-    }
+    if (!whitelist.includes(snakeKey)) continue;
 
     let value = obj[key];
-
-    // 3. Limpieza de campos numéricos
     if (numericFields.includes(snakeKey)) {
-      if (value === "" || value === undefined || value === null) {
+      if (value === "" || value === undefined || value === null) value = 0;
+      else value = parseFloat(value) || 0;
+    }
+
+    // Prevención de QuotaExceeded: No permitir Base64 excesivamente grandes en campos directos
+    if (typeof value === 'string' && value.length > 800000 && !key.toLowerCase().includes('signature')) {
         value = null;
-      } else {
-        const parsed = parseFloat(value);
-        value = isNaN(parsed) ? null : parsed;
-      }
     }
 
     snake[snakeKey] = value;
@@ -74,30 +72,57 @@ const mapToCamelCase = (obj) => {
   return camel;
 };
 
+/**
+ * Guardado seguro en LocalStorage con manejo de Cuota
+ */
 const safeSaveLocal = (key, data) => {
   try {
     const jsonString = JSON.stringify(data);
     localStorage.setItem(key, jsonString);
   } catch (e) {
-    console.warn(`Aviso de almacenamiento: Memoria local llena (QuotaExceeded).`);
-
-    // ESTRATEGIA DE EMERGENCIA: Si es la tabla de órdenes, guardar una versión sin fotos
+    console.error("QuotaExceeded: Limpiando imágenes pesadas para salvar datos de texto.");
     if (key === WORK_ORDERS_KEY && Array.isArray(data)) {
-        try {
-            // Quitamos lo que más pesa: fotos y firmas base64
-            const lightData = data.map(o => ({
-              ...o,
-              images: [],
-              images_light: o.images?.length || 0, // Solo guardamos cuántas fotos hay
-              client_signature: null,
-              tech_signature: null
-            }));
-            localStorage.setItem(key, JSON.stringify(lightData));
-            console.log("Se salvó el registro de texto eliminando las fotos pesadas de la memoria local.");
-        } catch (innerE) {
-            console.error("No se pudo salvar ni siquiera la versión ligera.");
-        }
+        const lightData = data.map(o => ({
+          ...o,
+          images: [],
+          client_signature: null,
+          tech_signature: null
+        }));
+        localStorage.setItem(key, JSON.stringify(lightData));
     }
+  }
+};
+
+/**
+ * Sube un archivo Base64 a Supabase Storage
+ */
+export const uploadFile = async (base64, path) => {
+  if (!base64 || !base64.startsWith('data:')) return base64;
+  try {
+    const base64Data = base64.split(',')[1];
+    const contentType = base64.split(';')[0].split(':')[1];
+    const byteCharacters = atob(base64Data);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      byteArrays.push(new Uint8Array(byteNumbers));
+    }
+    const blob = new Blob(byteArrays, { type: contentType });
+
+    const { data, error } = await supabase.storage
+      .from('labrepair-assets')
+      .upload(path, blob, { upsert: true });
+
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('labrepair-assets').getPublicUrl(path);
+    return publicUrl;
+  } catch (err) {
+    console.error("Error subiendo archivo:", err);
+    return base64; // Fallback al base64 si falla la subida
   }
 };
 
@@ -105,77 +130,84 @@ const safeSaveLocal = (key, data) => {
 
 export const getWorkOrders = async () => {
   try {
+    const localStr = localStorage.getItem(WORK_ORDERS_KEY);
+    const localOrders = localStr ? JSON.parse(localStr) : [];
+
     const { data, error } = await supabase
       .from('work_orders')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.warn("Fallo lectura de nube, usando LocalStorage.");
+      return localOrders;
+    }
 
     const cloudOrders = data.map(mapToCamelCase);
 
-    // LOGICA DE MEZCLA (MERGE): No borrar locales si la nube está vacía
-    const localData = localStorage.getItem(WORK_ORDERS_KEY);
-    const localOrders = localData ? JSON.parse(localData) : [];
+    // Mezcla inteligente: Unir por ID, prevaleciendo el cambio más reciente
+    const ordersMap = new Map();
+    localOrders.forEach(o => ordersMap.set(o.id, o));
+    cloudOrders.forEach(o => ordersMap.set(o.id, o));
 
-    // Si la nube tiene datos, los priorizamos pero mantenemos los locales que no se han subido
-    const merged = cloudOrders.length > 0 ? cloudOrders : localOrders;
-
-    safeSaveLocal(WORK_ORDERS_KEY, merged);
-    return merged;
+    const finalOrders = Array.from(ordersMap.values()).sort((a,b) => b.id.localeCompare(a.id));
+    safeSaveLocal(WORK_ORDERS_KEY, finalOrders);
+    return finalOrders;
   } catch (error) {
-    console.error("Error al leer órdenes:", error);
     const localData = localStorage.getItem(WORK_ORDERS_KEY);
     return localData ? JSON.parse(localData) : [];
   }
 };
 
 export const saveWorkOrder = async (workOrder) => {
-  // 1. LIMPIEZA DE DATOS (Asegurar IDs y Formatos)
   const orderId = workOrder.id || `OT-${Math.floor(1000 + Math.random() * 9000)}`;
-  const cleanOrder = { ...workOrder, id: orderId };
+  let processedOrder = { ...workOrder, id: orderId };
 
-  // 2. ACTUALIZACIÓN EN MEMORIA Y LOCALSTORAGE
-  const localData = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
-  const index = localData.findIndex(o => o.id === orderId);
-  let updatedLocal;
+  // 1. Guardado LOCAL inmediato (Seguridad extrema)
+  const currentLocal = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
+  const index = currentLocal.findIndex(o => o.id === orderId);
+  const updatedLocal = index >= 0
+    ? currentLocal.map(o => o.id === orderId ? processedOrder : o)
+    : [processedOrder, ...currentLocal];
 
-  if (index >= 0) {
-    updatedLocal = localData.map(o => o.id === orderId ? cleanOrder : o);
-  } else {
-    updatedLocal = [cleanOrder, ...localData];
-  }
-
-  // Guardamos en local (si hay espacio, con fotos; si no, se encarga safeSaveLocal de limpiar)
   safeSaveLocal(WORK_ORDERS_KEY, updatedLocal);
 
-  // 3. INTENTO DE SUBIDA A LA NUBE
+  // 2. Intento de subida a Storage si hay Base64
   try {
-    const snakeOrder = mapToSnakeCase(cleanOrder, 'work_orders');
-    const { error } = await supabase.from('work_orders').upsert(snakeOrder);
-
-    if (error) {
-      if (error.status === 404) {
-        console.warn("Tabla 'work_orders' no existe en Supabase. Los datos quedan seguros en el celular.");
-      } else {
-        throw error;
-      }
+    if (processedOrder.clientSignature?.startsWith('data:')) {
+      processedOrder.clientSignature = await uploadFile(processedOrder.clientSignature, `signatures/${orderId}_client.png`);
     }
-  } catch (error) {
-    console.error("Fallo de sincronización con la nube:", error);
-  }
+    if (processedOrder.techSignature?.startsWith('data:')) {
+      processedOrder.techSignature = await uploadFile(processedOrder.techSignature, `signatures/${orderId}_tech.png`);
+    }
+    if (Array.isArray(processedOrder.images)) {
+      const uploadPromises = processedOrder.images.map((img, idx) =>
+        img.startsWith('data:') ? uploadFile(img, `photos/${orderId}_${idx}.jpg`) : Promise.resolve(img)
+      );
+      processedOrder.images = await Promise.all(uploadPromises);
+    }
+  } catch (e) { console.warn("Error en subida de archivos:", e); }
 
-  // SIEMPRE retornamos la lista actualizada para que la interfaz se refresque
-  return updatedLocal;
+  // 3. Subida a Database
+  try {
+    const snakeOrder = mapToSnakeCase(processedOrder, 'work_orders');
+    const { error } = await supabase.from('work_orders').upsert(snakeOrder);
+    if (error) throw error;
+    return await getWorkOrders();
+  } catch (error) {
+    console.error("Fallo guardado en nube:", error);
+    return updatedLocal;
+  }
 };
 
 export const deleteWorkOrder = async (id) => {
   try {
-    const { error } = await supabase.from('work_orders').delete().eq('id', id);
-    if (error) throw error;
-    return await getWorkOrders();
+    await supabase.from('work_orders').delete().eq('id', id);
+    const local = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
+    const updated = local.filter(o => o.id !== id);
+    safeSaveLocal(WORK_ORDERS_KEY, updated);
+    return updated;
   } catch (error) {
-    console.error("Error al borrar orden:", error);
     return JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
   }
 };
@@ -198,57 +230,28 @@ export const getInventory = async () => {
 export const saveInventoryItem = async (item) => {
   try {
     const snakeItem = mapToSnakeCase(item, 'inventory');
-
-    if (!snakeItem.id) {
-        snakeItem.id = `INS-${Math.floor(1000 + Math.random() * 9000)}`;
-    }
-
-    console.log("Upserting a Supabase (Inventory):", snakeItem);
-
     const { error } = await supabase.from('inventory').upsert(snakeItem);
     if (error) throw error;
     return await getInventory();
   } catch (error) {
-    console.error("Fallo guardado inventario en Supabase:", error);
-    const localData = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
-    const itemId = item.id || `INS-${Math.floor(1000 + Math.random() * 9000)}`;
-    const index = localData.findIndex(i => i.id === itemId);
-    let updated;
-    if (index >= 0) {
-        updated = localData.map(i => i.id === itemId ? { ...i, ...item, id: itemId } : i);
-    } else {
-        updated = [...localData, { ...item, id: itemId }];
-    }
-    safeSaveLocal(INVENTORY_KEY, updated);
-    return updated;
+    return JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
   }
 };
 
-// --- CONFIGURACIÓN DEL SISTEMA ---
-
-const SETTINGS_LOCAL_KEY = 'estetica_lab_settings';
+// --- CONFIGURACIÓN ---
 
 export const getAppSettings = async () => {
   try {
-    const { data, error } = await supabase
-      .from('settings')
-      .select('*')
-      .eq('id', 'global_settings')
-      .maybeSingle(); // maybeSingle evita el error 406 si no hay datos
-
+    const { data, error } = await supabase.from('settings').select('*').eq('id', 'global_settings').maybeSingle();
     if (error) throw error;
-
     if (data) {
-      const camelSettings = mapToCamelCase(data);
-      safeSaveLocal(SETTINGS_LOCAL_KEY, camelSettings);
-      return camelSettings;
+      const camel = mapToCamelCase(data);
+      localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(camel));
+      return camel;
     }
-
     const local = localStorage.getItem(SETTINGS_LOCAL_KEY);
     return local ? JSON.parse(local) : null;
   } catch (error) {
-    // Si la tabla no existe (404), fallamos silenciosamente al local
-    console.warn("Aviso: No se pudo conectar con la tabla 'settings' en Supabase. Usando respaldo local.");
     const local = localStorage.getItem(SETTINGS_LOCAL_KEY);
     return local ? JSON.parse(local) : null;
   }
@@ -257,39 +260,24 @@ export const getAppSettings = async () => {
 export const saveAppSettings = async (settings) => {
   try {
     localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
-    const settingsWithId = { ...settings, id: 'global_settings' };
-    const snakeSettings = mapToSnakeCase(settingsWithId, 'settings');
-
-    const { error } = await supabase
-      .from('settings')
-      .upsert(snakeSettings);
-
-    if (error) throw error;
+    const snake = mapToSnakeCase({ ...settings, id: 'global_settings' }, 'settings');
+    await supabase.from('settings').upsert(snake);
     return settings;
   } catch (error) {
-    console.error("Error al guardar settings en Supabase:", error);
     return settings;
   }
 };
 
 // --- CLIENTES ---
 
-const CLIENTS_KEY = "labrepair_clients";
-
 export const getClients = async () => {
   try {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .order('name');
-
+    const { data, error } = await supabase.from('clients').select('*').order('name');
     if (error) throw error;
-
-    const clients = data.map(mapToCamelCase);
-    safeSaveLocal(CLIENTS_KEY, clients);
-    return clients;
+    const items = data.map(mapToCamelCase);
+    safeSaveLocal(CLIENTS_KEY, items);
+    return items;
   } catch (error) {
-    console.warn("Aviso: No se pudo conectar con la tabla 'clients' en Supabase. Usando respaldo local.");
     const localData = localStorage.getItem(CLIENTS_KEY);
     return localData ? JSON.parse(localData) : [];
   }
@@ -297,81 +285,44 @@ export const getClients = async () => {
 
 export const saveClient = async (client) => {
   try {
-    const snakeClient = mapToSnakeCase(client, 'clients');
-    const { error } = await supabase.from('clients').upsert(snakeClient);
-    if (error) throw error;
+    const snake = mapToSnakeCase(client, 'clients');
+    await supabase.from('clients').upsert(snake);
     return await getClients();
   } catch (error) {
-    console.error("Error al guardar cliente:", error);
-    const localData = JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
-    const index = localData.findIndex(c => c.id === client.id);
-    let updated;
-    if (index >= 0) {
-      updated = localData.map(c => c.id === client.id ? { ...c, ...client } : c);
-    } else {
-      updated = [...localData, { ...client, id: client.id || Date.now().toString() }];
-    }
-    safeSaveLocal(CLIENTS_KEY, updated);
-    return updated;
+    return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
   }
 };
 
 export const deleteClient = async (id) => {
   try {
-    const { error } = await supabase.from('clients').delete().eq('id', id);
-    if (error) throw error;
+    await supabase.from('clients').delete().eq('id', id);
     return await getClients();
   } catch (error) {
-    console.error("Error al borrar cliente:", error);
-    const localData = JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
-    const updated = localData.filter(c => c.id !== id);
-    safeSaveLocal(CLIENTS_KEY, updated);
-    return updated;
+    return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
   }
 };
 
-/**
- * Función crítica para restaurar un backup completo tanto en la nube (Supabase)
- * como en el almacenamiento local.
- */
 export const restoreFullBackup = async (backupData) => {
   try {
-    console.log("Iniciando restauración masiva de backup...");
-
-    // 1. Restaurar Órdenes de Trabajo en Supabase
-    if (backupData.workOrders && Array.isArray(backupData.workOrders)) {
+    if (backupData.workOrders) {
       const snakeOrders = backupData.workOrders.map(o => mapToSnakeCase(o, 'work_orders'));
-      // Dividir en bloques si es muy grande (Supabase tiene límites por request)
-      const { error } = await supabase.from('work_orders').upsert(snakeOrders);
-      if (error) throw error;
-      console.log(`${snakeOrders.length} órdenes restauradas en la nube.`);
+      await supabase.from('work_orders').upsert(snakeOrders);
     }
-
-    // 2. Restaurar Inventario en Supabase
-    if (backupData.inventory && Array.isArray(backupData.inventory)) {
-      const snakeInventory = backupData.inventory.map(i => mapToSnakeCase(i, 'inventory'));
-      const { error } = await supabase.from('inventory').upsert(snakeInventory);
-      if (error) throw error;
-      console.log(`${snakeInventory.length} productos de inventario restaurados en la nube.`);
+    if (backupData.inventory) {
+      const snakeInv = backupData.inventory.map(i => mapToSnakeCase(i, 'inventory'));
+      await supabase.from('inventory').upsert(snakeInv);
     }
-
-    // 3. Restaurar Clientes en Supabase
-    if (backupData.clients && Array.isArray(backupData.clients)) {
-      const snakeClients = backupData.clients.map(c => mapToSnakeCase(c, 'clients'));
-      const { error } = await supabase.from('clients').upsert(snakeClients);
-      if (error) throw error;
-      console.log(`${snakeClients.length} clientes restaurados en la nube.`);
+    if (backupData.clients) {
+      const snakeCli = backupData.clients.map(c => mapToSnakeCase(c, 'clients'));
+      await supabase.from('clients').upsert(snakeCli);
     }
-
-    // 4. Restaurar Configuraciones (LocalStorage + Cloud)
     if (backupData.settings) {
-      localStorage.setItem('estetica_lab_settings', JSON.stringify(backupData.settings));
-      await saveAppSettings(backupData.settings);
+      localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(backupData.settings));
+      const snakeSet = mapToSnakeCase({ ...backupData.settings, id: 'global_settings' }, 'settings');
+      await supabase.from('settings').upsert(snakeSet);
     }
-
     return { success: true };
   } catch (error) {
-    console.error("Error en restauración de backup:", error);
     return { success: false, error: error.message };
   }
 };
