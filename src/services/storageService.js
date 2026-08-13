@@ -215,21 +215,21 @@ export const getAppSettings = async () => {
       .from('settings')
       .select('*')
       .eq('id', 'global_settings')
-      .single();
+      .maybeSingle(); // maybeSingle evita el error 406 si no hay datos
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 es "no rows found"
+    if (error) throw error;
 
     if (data) {
       const camelSettings = mapToCamelCase(data);
-      localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(camelSettings));
+      safeSaveLocal(SETTINGS_LOCAL_KEY, camelSettings);
       return camelSettings;
     }
 
-    // Si no hay en la nube, devolver local o null
     const local = localStorage.getItem(SETTINGS_LOCAL_KEY);
     return local ? JSON.parse(local) : null;
   } catch (error) {
-    console.error("Error al leer settings de Supabase:", error);
+    // Si la tabla no existe (404), fallamos silenciosamente al local
+    console.warn("Aviso: No se pudo conectar con la tabla 'settings' en Supabase. Usando respaldo local.");
     const local = localStorage.getItem(SETTINGS_LOCAL_KEY);
     return local ? JSON.parse(local) : null;
   }
@@ -237,6 +237,7 @@ export const getAppSettings = async () => {
 
 export const saveAppSettings = async (settings) => {
   try {
+    localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
     const settingsWithId = { ...settings, id: 'global_settings' };
     const snakeSettings = mapToSnakeCase(settingsWithId, 'settings');
 
@@ -245,12 +246,9 @@ export const saveAppSettings = async (settings) => {
       .upsert(snakeSettings);
 
     if (error) throw error;
-
-    localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
     return settings;
   } catch (error) {
     console.error("Error al guardar settings en Supabase:", error);
-    localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
     return settings;
   }
 };
@@ -265,12 +263,14 @@ export const getClients = async () => {
       .from('clients')
       .select('*')
       .order('name');
+
     if (error) throw error;
+
     const clients = data.map(mapToCamelCase);
     safeSaveLocal(CLIENTS_KEY, clients);
     return clients;
   } catch (error) {
-    console.error("Error al leer clientes:", error);
+    console.warn("Aviso: No se pudo conectar con la tabla 'clients' en Supabase. Usando respaldo local.");
     const localData = localStorage.getItem(CLIENTS_KEY);
     return localData ? JSON.parse(localData) : [];
   }
