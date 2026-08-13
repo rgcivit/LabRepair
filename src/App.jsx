@@ -165,6 +165,26 @@ export default function App() {
   const readyDeliveryCount = orders.filter(o => o.status === 'LISTO').length;
   const lowStockCount = inventory.filter(item => item.stock <= item.minStock).length;
 
+  // --- CÁLCULO DE MANTENIMIENTOS PREVENTIVOS (3 MESES) ---
+  const maintenanceReminders = orders.reduce((acc, order) => {
+    if (order.status !== 'ENTREGADO' || !order.entryDate || !order.serialNumber) return acc;
+
+    // Solo considerar la última intervención de cada número de serie
+    const existing = acc.find(item => item.serialNumber === order.serialNumber);
+    if (!existing || new Date(order.entryDate) > new Date(existing.entryDate)) {
+      if (existing) acc = acc.filter(item => item.serialNumber !== order.serialNumber);
+
+      const repairDate = new Date(order.entryDate);
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      if (repairDate <= threeMonthsAgo) {
+        acc.push(order);
+      }
+    }
+    return acc;
+  }, []);
+
   // --- AUTENTICACIÓN Y GESTIÓN DE SESIÓN ---
   const handleLogout = () => {
     logout();
@@ -466,6 +486,27 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => { setActiveTab('maintenance'); }}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
+              activeTab === 'maintenance'
+                ? 'bg-slate-900 text-cyan-400 font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5" />
+              </svg>
+              <span>Recordatorios</span>
+            </div>
+            {maintenanceReminders.length > 0 && (
+              <span className="bg-cyan-500 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                {maintenanceReminders.length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => { setActiveTab('settings'); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors shrink-0 md:shrink ${
               activeTab === 'settings' 
@@ -524,6 +565,19 @@ export default function App() {
                   <div className="p-3 bg-emerald-950/40 text-emerald-400 border border-emerald-800/20 rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mantenimientos</span>
+                    <h3 className={`text-3xl font-black mt-1 ${maintenanceReminders.length > 0 ? 'text-cyan-400' : 'text-slate-300'}`}>{maintenanceReminders.length}</h3>
+                    <p className="text-[10px] text-cyan-500 mt-1">Equipos +3 meses</p>
+                  </div>
+                  <div className={`p-3 border rounded-lg ${maintenanceReminders.length > 0 ? 'bg-cyan-950/40 text-cyan-400 border-cyan-800/30' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5" />
                     </svg>
                   </div>
                 </div>
@@ -820,6 +874,67 @@ export default function App() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'maintenance' && (
+            <div className="space-y-6 max-w-4xl mx-auto">
+              <div className="bg-slate-950 border border-slate-800 p-6 rounded-xl shadow-xl">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-glow shadow-cyan-400 animate-pulse"></span>
+                  <span className="text-[10px] font-mono text-cyan-400 font-black uppercase tracking-widest">Preventive Maintenance Engine</span>
+                </div>
+                <h2 className="text-xl font-black text-white uppercase tracking-wider mt-1">Equipos para Mantenimiento (+3 meses)</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Listado de equipos cuya última intervención fue hace más de 90 días. Se recomienda contactar para service preventivo.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {maintenanceReminders.length === 0 ? (
+                  <div className="bg-slate-950 border border-slate-800 rounded-xl p-12 text-center text-slate-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1" stroke="currentColor" className="w-16 h-16 mx-auto text-slate-800 mb-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                    </svg>
+                    <h5 className="text-slate-400 font-bold uppercase tracking-wider">Sin mantenimientos pendientes</h5>
+                    <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">No hay equipos que superen los 3 meses desde su última reparación entregada.</p>
+                  </div>
+                ) : (
+                  maintenanceReminders.map(order => (
+                    <div key={order.id} className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-cyan-500/30 transition-colors shadow-lg">
+                      <div className="flex items-center gap-4 w-full">
+                        <div className="h-12 w-12 rounded-full bg-cyan-950/30 border border-cyan-800/20 flex items-center justify-center text-cyan-400 shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12H13.5" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-black text-slate-100 truncate">{order.equipmentName || order.deviceType} <span className="font-mono text-cyan-500 text-xs ml-2">S/N: {order.serialNumber}</span></h4>
+                          <p className="text-sm text-slate-400 font-bold">{order.clientName}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                              📅 Última: {order.entryDate}
+                            </span>
+                            <span className="text-[10px] bg-amber-950/40 text-amber-500 border border-amber-800/20 px-1.5 py-0.5 rounded font-black uppercase">
+                              Hace {Math.floor((Date.now() - new Date(order.entryDate)) / (1000 * 60 * 60 * 24 * 30))} meses
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const msg = encodeURIComponent(`Hola *${order.clientName}*, te contactamos de *LabRepair* 🔧. Notamos que han pasado 3 meses desde el service de tu *${order.deviceType}* (S/N: ${order.serialNumber}). Recomendamos realizar un mantenimiento preventivo para asegurar el óptimo funcionamiento y evitar desgastes mayores. ¡Avísanos si quieres coordinar un turno!`);
+                          window.open(`https://wa.me/${order.clientPhone.replace(/[^\d+]/g, '')}?text=${msg}`, '_blank');
+                        }}
+                        className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-lg uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 active:scale-95 transition-all"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-4 h-4">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.274 1.52 5.242 1.522 5.404 0 9.799-4.395 9.802-9.799 0-2.62-1.02-5.084-2.871-6.934-1.852-1.848-4.312-2.868-6.931-2.87-5.404 0-9.802 4.394-9.802 9.799 0 2.131.56 4.202 1.618 6.013l-.945 3.454 3.535-.928zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.353-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.174.198-.298.298-.497.099-.198.05-.371-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.808 2.876 2.056 3.223c.248.348 3.556 5.432 8.613 7.611 1.203.518 2.143.827 2.873 1.058 1.21.384 2.31.33 3.18.201.97-.144 2.03-.83 2.316-1.632.285-.802.285-1.488.201-1.633z"/></svg>
+                        Recordar Service
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
