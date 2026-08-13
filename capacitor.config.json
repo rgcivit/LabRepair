@@ -1,5 +1,9 @@
 {
   "appId": "com.labrepair.app",
   "appName": "labrepair",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://lab-repair-iota.vercel.app/",
+    "cleartext": true
+  }
 }
