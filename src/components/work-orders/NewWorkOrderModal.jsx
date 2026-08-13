@@ -308,16 +308,18 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
                   />
 
-                  {/* SUGERENCIAS DE CLIENTES */}
+                  {/* SUGERENCIAS DE CLIENTES - MEJORADO PARA MÓVIL */}
                   {showClientSuggestions && filteredClients.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-cyan-500/50 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.15)] z-[100] max-h-48 overflow-y-auto divide-y divide-slate-800 animate-fadeIn">
-                      <div className="px-3 py-1.5 bg-slate-950/50 text-[9px] font-black text-cyan-500 uppercase tracking-widest border-b border-slate-800">Clientes Encontrados</div>
+                    <div className="absolute left-0 right-0 top-full mt-2 bg-slate-900 border-2 border-cyan-500 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[999] max-h-60 overflow-y-auto divide-y divide-slate-800 animate-fadeIn">
+                      <div className="px-3 py-2 bg-cyan-950/40 text-[10px] font-black text-cyan-400 uppercase tracking-widest border-b border-slate-800 flex justify-between items-center">
+                        <span>Clientes Registrados</span>
+                        <span className="bg-cyan-500 text-slate-950 px-1.5 rounded-full">{filteredClients.length}</span>
+                      </div>
                       {filteredClients.map(c => (
-                        <button
+                        <div
                           key={c.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault(); // Evita que el onBlur del input cierre esto antes del click
+                          onPointerDown={(e) => {
+                            e.preventDefault();
                             setFormData({
                               ...formData,
                               clientName: c.name,
@@ -325,16 +327,18 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
                             });
                             setShowClientSuggestions(false);
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-cyan-500/10 text-xs transition-all flex justify-between items-center group"
+                          className="w-full text-left px-4 py-3.5 hover:bg-cyan-500/20 active:bg-cyan-500/30 cursor-pointer transition-all flex justify-between items-center group"
                         >
-                          <div className="flex flex-col">
-                            <span className="font-black text-slate-200 group-hover:text-cyan-400 uppercase tracking-tight">{c.name}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">{c.email || "Sin email"}</span>
+                          <div className="flex flex-col min-w-0 pr-4">
+                            <span className="font-black text-slate-100 group-hover:text-cyan-400 uppercase tracking-tight truncate">{c.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono truncate">{c.email || "Sin correo"}</span>
                           </div>
-                          <span className="text-[10px] bg-slate-950 px-2 py-1 rounded border border-slate-800 text-slate-400 font-mono group-hover:border-cyan-500/30 group-hover:text-cyan-400">
-                            {c.phone}
-                          </span>
-                        </button>
+                          <div className="shrink-0 flex flex-col items-end">
+                            <span className="text-[10px] bg-slate-950 px-2 py-1 rounded border border-slate-800 text-cyan-500 font-mono font-bold">
+                              {c.phone}
+                            </span>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -422,6 +426,41 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
                     {item}
                   </button>
                 ))}
+                {/* LISTAR ACCESORIOS PERSONALIZADOS YA AGREGADOS */}
+                {selectedAccessories?.filter(acc => !COMMON_ACCESSORIES.includes(acc)).map(acc => (
+                  <button
+                    type="button"
+                    key={acc}
+                    onClick={() => handleAccessoryToggle(acc)}
+                    className="p-2.5 rounded-xl border text-[9px] text-left transition-all bg-cyan-500/10 border-cyan-500 text-cyan-400 font-bold flex justify-between items-center"
+                  >
+                    <span>{acc}</span>
+                    <X size={10} className="text-cyan-600" />
+                  </button>
+                ))}
+              </div>
+
+              {/* AGREGAR OTRO ACCESORIO */}
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  placeholder="Agregar otro accesorio..."
+                  value={customAccessory}
+                  onChange={(e) => setCustomAccessory(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-cyan-500/50 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customAccessory.trim()) {
+                      handleAccessoryToggle(customAccessory.trim());
+                      setCustomAccessory("");
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase transition-all"
+                >
+                  <Plus size={14} />
+                </button>
               </div>
             </div>
 
