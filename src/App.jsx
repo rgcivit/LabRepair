@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import logo from './components/logo laboratorio.jpeg';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Microscope,
+  Users,
+  Boxes,
+  History,
+  Bell,
+  Settings2,
+  Plus
+} from "lucide-react";
 import { supabase } from './services/supabaseClient';
 import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
@@ -424,9 +435,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-              </svg>
+              <LayoutDashboard size={18} />
               <span>Dashboard Taller</span>
             </div>
           </button>
@@ -440,9 +449,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <ClipboardList size={18} />
               <span>Órdenes de Trabajo</span>
             </div>
             <span className="bg-slate-800 text-[11px] text-slate-300 font-bold px-2 py-0.5 rounded-full">
@@ -459,9 +466,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
-              </svg>
+              <Microscope size={18} />
               <span>Diagnóstico & Banco</span>
             </div>
             <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -478,9 +483,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.25 0 11-5.25 0 2.625 2.25 0 015.25 0z" />
-              </svg>
+              <Users size={18} />
               <span>Clientes</span>
             </div>
             <span className="bg-slate-800 text-[11px] text-slate-300 font-bold px-2 py-0.5 rounded-full">
@@ -497,9 +500,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-              </svg>
+              <Boxes size={18} />
               <span>Repuestos & Almacén</span>
             </div>
             {lowStockCount > 0 && (
@@ -518,9 +519,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3m3.75-9H6.75A2.25 2.25 0 004.5 8.25v10.5A2.25 2.25 0 006.75 21h10.5a2.25 2.25 0 002.25-2.25V14.25m-3-10.5h3m0 0v3m0-3l-6.75 6.75" />
-              </svg>
+              <History size={18} />
               <span>Historial de Serie</span>
             </div>
           </button>
@@ -534,9 +533,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5" />
-              </svg>
+              <Bell size={18} />
               <span>Recordatorios</span>
             </div>
             {maintenanceReminders.length > 0 && (
@@ -555,10 +552,7 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4.5 h-4.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213.533a1 1 0 00.92.65h.09a1 1 0 00.92-.65l.214-.533a1.125 1.125 0 011.604-.686l2.246 1.298c.477.275.674.862.45 1.378l-.213.533a1 1 0 00.18 1.1l.063.063a1 1 0 001.1.18l.533-.213a1.125 1.125 0 011.379.45l1.298 2.246a1.125 1.125 0 01-.686 1.604l-.533.214a1 1 0 00-.65.92v.09c0 .412.25.783.65.92l.533.214a1.125 1.125 0 01.686 1.604l-1.298 2.246a1.125 1.125 0 01-1.379.45l-.533-.213a1 1 0 00-1.1.18l-.063.063a1 1 0 00-.18 1.1l.213.533a1.125 1.125 0 01-.45 1.379l-2.246 1.298a1.125 1.125 0 01-1.604-.686l-.214-.533a1 1 0 00-.92-.65h-.09a1 1 0 00-.92.65l-.213.533a1.125 1.125 0 01-1.11.94h-2.594a1.125 1.125 0 01-1.11-.94l-.213-.533a1 1 0 00-.92-.65h-.09a1 1 0 00-.92.65l-.214.533a1.125 1.125 0 01-1.604.686l-2.246-1.298a1.125 1.125 0 01-.45-1.379l.213-.533a1 1 0 00-.18-1.1l-.063-.063a1 1 0 00-1.1-.18l-.533.213a1.125 1.125 0 01-1.379-.45l-1.298-2.246a1.125 1.125 0 01.686-1.604l.533-.214a1 1 0 00.65-.92v-.09a1 1 0 00-.65-.92l-.533-.214a1.125 1.125 0 01-.686-1.604l1.298-2.246a1.125 1.125 0 011.379-.45l.533.213a1 1 0 001.1-.18l.063-.063a1 1 0 00.18-1.1l-.213-.533a1.125 1.125 0 01.45-1.379l2.246-1.298a1.125 1.125 0 011.604.686l.214.533a1 1 0 00.92.65h.09a1 1 0 00.92-.65l.213-.533z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <Settings2 size={18} />
               <span>Configuración</span>
             </div>
           </button>
