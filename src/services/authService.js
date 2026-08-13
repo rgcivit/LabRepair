@@ -1,13 +1,20 @@
 const USERS_KEY = 'labrepair_users';
 const CURRENT_USER_KEY = 'labrepair_current_user';
 
-// Listado de usuarios iniciales, comenzando con Rodrigo Guevara Civit
+// Listado de usuarios iniciales
 const INITIAL_USERS = [
   {
     name: 'Rodrigo Guevara Civit',
-    username: 'rodrigo',
+    username: 'rgcivit',
     email: 'rodrigo@labrepair.com',
-    password: 'admin', // Contraseña por defecto inicial
+    password: 'prinoth',
+    role: 'ADMIN'
+  },
+  {
+    name: 'Administrador',
+    username: 'rodrigo',
+    email: 'admin@labrepair.com',
+    password: 'admin',
     role: 'ADMIN'
   }
 ];
