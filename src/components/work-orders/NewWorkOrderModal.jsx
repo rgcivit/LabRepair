@@ -45,6 +45,18 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
   const [images, setImages] = React.useState([]);
   const [showClientSuggestions, setShowClientSuggestions] = React.useState(false);
 
+  // Sugerencias de clientes
+  const filteredClients = React.useMemo(() => {
+    if (!clients || !Array.isArray(clients)) return [];
+    const q = (formData.clientName || "").toLowerCase().trim();
+    if (q.length === 0) return [];
+
+    return clients.filter(c =>
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q))
+    ).slice(0, 5);
+  }, [clients, formData.clientName]);
+
   // Cargar datos si estamos editando
   React.useEffect(() => {
     if (editingOrder) {
@@ -257,18 +269,6 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
     setShowClientSuggestions(false);
     onClose();
   };
-
-  // Sugerencias de clientes mejoradas
-  const filteredClients = React.useMemo(() => {
-    const q = formData.clientName.toLowerCase().trim();
-    if (q.length === 0) return [];
-
-    // Filtrar clientes registrados
-    return clients.filter(c =>
-      (c.name && c.name.toLowerCase().includes(q)) ||
-      (c.phone && c.phone.includes(q))
-    ).slice(0, 5); // Limitar a 5 para mejor visibilidad
-  }, [clients, formData.clientName]);
 
   return (
     <>
