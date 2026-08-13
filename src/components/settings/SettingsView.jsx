@@ -3,6 +3,7 @@ import { getUsers, registerUser } from '../../services/authService';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { getAppSettings, saveAppSettings } from '../../services/storageService';
 
 const DEFAULT_SETTINGS = {
   companyName: 'LABORATORIO DE REPARACIÓN Y CALIBRACIÓN',
@@ -29,6 +30,7 @@ const DEFAULT_SETTINGS = {
  */
 export default function SettingsView({ workOrders, inventory, onRestoreData }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [fileError, setFileError] = useState('');
 
   // Estados de control de accesos / usuarios
@@ -57,27 +59,29 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     }
   };
 
-  // Cargar configuraciones guardadas en localStorage
+  // Cargar configuraciones guardadas (Sincronización Cloud)
   useEffect(() => {
-    const saved = localStorage.getItem('estetica_lab_settings');
-    if (saved) {
-      try {
-        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
-      } catch (e) {
-        console.error("Error al decodificar las configuraciones de taller:", e);
+    const loadSettings = async () => {
+      setIsSyncing(true);
+      const cloudSettings = await getAppSettings();
+      if (cloudSettings) {
+        setSettings({ ...DEFAULT_SETTINGS, ...cloudSettings });
       }
-    }
+      setIsSyncing(false);
+    };
+    loadSettings();
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target;
     const updated = { ...settings, [name]: value };
     setSettings(updated);
-    localStorage.setItem('estetica_lab_settings', JSON.stringify(updated));
+    // Guardar en la nube automáticamente
+    await saveAppSettings(updated);
   };
 
   // Conversión de archivos cargados (PNG/JPG) a Base64
-  const handleFileChange = (e, fieldName) => {
+  const handleFileChange = async (e, fieldName) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -87,24 +91,24 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     }
 
     // Límite de tamaño sugerido (e.g. 500KB para evitar sobrecargar localStorage)
-    if (file.size > 512 * 1024) {
-      alert("La imagen es pesada. Intente subir una imagen menor a 500KB.");
+    if (file.size > 1024 * 1024) {
+      alert("La imagen es pesada. Intente subir una imagen menor a 1MB.");
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const updated = { ...settings, [fieldName]: event.target.result };
       setSettings(updated);
-      localStorage.setItem('estetica_lab_settings', JSON.stringify(updated));
+      await saveAppSettings(updated);
       setFileError('');
     };
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveImage = (fieldName) => {
+  const handleRemoveImage = async (fieldName) => {
     const updated = { ...settings, [fieldName]: '' };
     setSettings(updated);
-    localStorage.setItem('estetica_lab_settings', JSON.stringify(updated));
+    await saveAppSettings(updated);
   };
 
   // --- COPIAS DE SEGURIDAD (BACKUP SYSTEM) ---
@@ -194,13 +198,26 @@ export default function SettingsView({ workOrders, inventory, onRestoreData }) {
     <div className="space-y-6 max-w-4xl mx-auto">
       
       {/* Cabecera */}
-      <div className="bg-slate-950 border border-slate-800 p-6 rounded-xl shadow-xl">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-glow shadow-cyan-400 animate-pulse"></span>
-          <span className="text-[10px] font-mono text-cyan-400 font-black uppercase tracking-widest">Admin Configuration Console</span>
+      <div className="bg-slate-950 border border-slate-800 p-6 rounded-xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full shadow-glow ${isSyncing ? 'bg-amber-500 animate-pulse' : 'bg-cyan-400'}`}></span>
+            <span className="text-[10px] font-mono text-cyan-400 font-black uppercase tracking-widest">
+              {isSyncing ? 'Sincronizando con la nube...' : 'Admin Configuration Console'}
+            </span>
+          </div>
+          <h2 className="text-xl font-black text-white uppercase tracking-wider mt-1">Configuración y Respaldos</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Gestione datos del taller, firmas del personal técnico homologado y resguarde la base de datos.</p>
         </div>
-        <h2 className="text-xl font-black text-white uppercase tracking-wider mt-1">Configuración y Respaldos</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Gestione datos del taller, firmas del personal técnico homologado y resguarde la base de datos.</p>
+
+        {!isSyncing && (
+          <div className="bg-emerald-950/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Sincronización Cloud Activa</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-emerald-500">
+              <path fillRule="evenodd" d="M15.312 11.424a5 5 0 01-9.201 2.466l-.312-.311L4.544 14.83A7 7 0 0016 11.5a6.966 6.966 0 00-1.43-4.114l-1.458 1.459a4.972 4.972 0 012.2 2.579zM11.11 3.08a7 7 0 00-9.603 9.603l1.459-1.459a4.972 4.972 0 017.387-5.414l.312.311 1.256-1.256a7 7 0 00-1.459-2.1l-.312.311L11.11 3.08z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

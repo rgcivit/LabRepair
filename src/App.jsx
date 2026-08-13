@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logo from './components/logo laboratorio.jpeg';
 import { supabase } from './services/supabaseClient';
-import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
@@ -50,8 +50,12 @@ export default function App() {
   useEffect(() => {
     const initData = async () => {
       setIsLoading(true);
-      const fetchedOrders = await getWorkOrders();
-      const fetchedInventory = await getInventory();
+      // Cargar configuraciones, órdenes e inventario en paralelo
+      const [fetchedOrders, fetchedInventory] = await Promise.all([
+        getWorkOrders(),
+        getInventory(),
+        getAppSettings() // Sincroniza configuraciones con la nube al iniciar
+      ]);
       setOrders(fetchedOrders);
       setInventory(fetchedInventory);
       setIsLoading(false);

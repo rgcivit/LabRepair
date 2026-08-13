@@ -19,10 +19,20 @@ const VALID_INVENTORY_COLUMNS = [
   "id", "name", "category", "stock", "min_stock", "price", "equipment_type"
 ];
 
+const VALID_SETTINGS_COLUMNS = [
+  "id", "company_name", "company_cuit", "company_address", "company_phone",
+  "company_email", "currency", "pdf_footer", "technician_name", "license_number",
+  "logo", "signature"
+];
+
 const mapToSnakeCase = (obj, table = 'work_orders') => {
   const snake = {};
   const numericFields = ["estimated_budget", "labor_cost", "price", "cost", "stock", "min_stock"];
-  const whitelist = table === 'work_orders' ? VALID_WORK_ORDER_COLUMNS : VALID_INVENTORY_COLUMNS;
+
+  let whitelist;
+  if (table === 'work_orders') whitelist = VALID_WORK_ORDER_COLUMNS;
+  else if (table === 'inventory') whitelist = VALID_INVENTORY_COLUMNS;
+  else whitelist = VALID_SETTINGS_COLUMNS;
 
   for (const key in obj) {
     // 1. Convertir key a snake_case
@@ -190,6 +200,56 @@ export const saveInventoryItem = async (item) => {
   }
 };
 
+// --- CONFIGURACIÓN DEL SISTEMA ---
+
+const SETTINGS_LOCAL_KEY = 'estetica_lab_settings';
+
+export const getAppSettings = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('id', 'global_settings')
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 es "no rows found"
+
+    if (data) {
+      const camelSettings = mapToCamelCase(data);
+      localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(camelSettings));
+      return camelSettings;
+    }
+
+    // Si no hay en la nube, devolver local o null
+    const local = localStorage.getItem(SETTINGS_LOCAL_KEY);
+    return local ? JSON.parse(local) : null;
+  } catch (error) {
+    console.error("Error al leer settings de Supabase:", error);
+    const local = localStorage.getItem(SETTINGS_LOCAL_KEY);
+    return local ? JSON.parse(local) : null;
+  }
+};
+
+export const saveAppSettings = async (settings) => {
+  try {
+    const settingsWithId = { ...settings, id: 'global_settings' };
+    const snakeSettings = mapToSnakeCase(settingsWithId, 'settings');
+
+    const { error } = await supabase
+      .from('settings')
+      .upsert(snakeSettings);
+
+    if (error) throw error;
+
+    localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
+    return settings;
+  } catch (error) {
+    console.error("Error al guardar settings en Supabase:", error);
+    localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
+    return settings;
+  }
+};
+
 /**
  * Función crítica para restaurar un backup completo tanto en la nube (Supabase)
  * como en el almacenamiento local.
@@ -215,9 +275,10 @@ export const restoreFullBackup = async (backupData) => {
       console.log(`${snakeInventory.length} productos de inventario restaurados en la nube.`);
     }
 
-    // 3. Restaurar Configuraciones (LocalStorage)
+    // 3. Restaurar Configuraciones (LocalStorage + Cloud)
     if (backupData.settings) {
       localStorage.setItem('estetica_lab_settings', JSON.stringify(backupData.settings));
+      await saveAppSettings(backupData.settings);
     }
 
     return { success: true };
