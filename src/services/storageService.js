@@ -79,16 +79,23 @@ const safeSaveLocal = (key, data) => {
     const jsonString = JSON.stringify(data);
     localStorage.setItem(key, jsonString);
   } catch (e) {
-    console.error(`Error de almacenamiento (QuotaExceeded): El backup es demasiado grande para la memoria local del navegador/móvil.`);
+    console.warn(`Aviso de almacenamiento: Memoria local llena (QuotaExceeded).`);
 
-    // Intento de guardado de emergencia: Eliminar imágenes para salvar espacio (pesan el 90% del JSON)
+    // ESTRATEGIA DE EMERGENCIA: Si es la tabla de órdenes, guardar una versión sin fotos
     if (key === WORK_ORDERS_KEY && Array.isArray(data)) {
         try {
-            const lightData = data.map(o => ({ ...o, images: [], client_signature: null, tech_signature: null }));
+            // Quitamos lo que más pesa: fotos y firmas base64
+            const lightData = data.map(o => ({
+              ...o,
+              images: [],
+              images_light: o.images?.length || 0, // Solo guardamos cuántas fotos hay
+              client_signature: null,
+              tech_signature: null
+            }));
             localStorage.setItem(key, JSON.stringify(lightData));
-            console.warn("Se guardó una copia local reducida (sin imágenes) para no perder el registro de órdenes.");
+            console.log("Se salvó el registro de texto eliminando las fotos pesadas de la memoria local.");
         } catch (innerE) {
-            localStorage.removeItem(key);
+            console.error("No se pudo salvar ni siquiera la versión ligera.");
         }
     }
   }
@@ -124,30 +131,42 @@ export const getWorkOrders = async () => {
 };
 
 export const saveWorkOrder = async (workOrder) => {
-  // 1. GUARDADO LOCAL INMEDIATO (Seguridad)
-  const localData = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
+  // 1. LIMPIEZA DE DATOS (Asegurar IDs y Formatos)
   const orderId = workOrder.id || `OT-${Math.floor(1000 + Math.random() * 9000)}`;
+  const cleanOrder = { ...workOrder, id: orderId };
+
+  // 2. ACTUALIZACIÓN EN MEMORIA Y LOCALSTORAGE
+  const localData = JSON.parse(localStorage.getItem(WORK_ORDERS_KEY) || '[]');
   const index = localData.findIndex(o => o.id === orderId);
   let updatedLocal;
+
   if (index >= 0) {
-    updatedLocal = localData.map(o => o.id === orderId ? { ...o, ...workOrder, id: orderId } : o);
+    updatedLocal = localData.map(o => o.id === orderId ? cleanOrder : o);
   } else {
-    updatedLocal = [...localData, { ...workOrder, id: orderId }];
+    updatedLocal = [cleanOrder, ...localData];
   }
+
+  // Guardamos en local (si hay espacio, con fotos; si no, se encarga safeSaveLocal de limpiar)
   safeSaveLocal(WORK_ORDERS_KEY, updatedLocal);
 
-  // 2. INTENTO DE GUARDADO EN NUBE
+  // 3. INTENTO DE SUBIDA A LA NUBE
   try {
-    const snakeOrder = mapToSnakeCase({ ...workOrder, id: orderId }, 'work_orders');
+    const snakeOrder = mapToSnakeCase(cleanOrder, 'work_orders');
     const { error } = await supabase.from('work_orders').upsert(snakeOrder);
-    if (error) throw error;
 
-    // Si subió bien, retornamos la lista fresca de la nube
-    return await getWorkOrders();
+    if (error) {
+      if (error.status === 404) {
+        console.warn("Tabla 'work_orders' no existe en Supabase. Los datos quedan seguros en el celular.");
+      } else {
+        throw error;
+      }
+    }
   } catch (error) {
-    console.error("Fallo guardado en nube, queda solo en local:", error);
-    return updatedLocal;
+    console.error("Fallo de sincronización con la nube:", error);
   }
+
+  // SIEMPRE retornamos la lista actualizada para que la interfaz se refresque
+  return updatedLocal;
 };
 
 export const deleteWorkOrder = async (id) => {

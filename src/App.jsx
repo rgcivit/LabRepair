@@ -140,8 +140,10 @@ export default function App() {
   // Callback general para guardar/actualizar una OT
   const handleSaveOT = async (updatedOrder) => {
     const updatedList = await saveWorkOrder(updatedOrder);
-    setOrders(updatedList);
-    setSelectedOrder(updatedOrder);
+    setOrders([...updatedList]); // Forzar nueva referencia de array para React
+    if (selectedOrder?.id === updatedOrder.id) {
+      setSelectedOrder(updatedOrder);
+    }
   };
 
   // Callback para imputar y descontar stock
