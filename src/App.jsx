@@ -309,10 +309,10 @@ export default function App() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-black text-white tracking-wider flex items-center gap-1.5">
-                LABORATORIO <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">ESTÉTICA</span>
+              <h1 className="text-lg font-black text-white tracking-tight flex flex-col leading-none">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400 uppercase">Ingeniería Biomédica</span>
+                <span className="text-xs tracking-[0.3em] text-slate-500 uppercase mt-0.5">Laboratorio</span>
               </h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest font-mono">Sistema de Gestión e Ingeniería</p>
             </div>
           </div>
 

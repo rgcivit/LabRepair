@@ -53,8 +53,8 @@ export default function LoginView({ onLoginSuccess }) {
             </svg>
           </div>
           <div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-wider">LabRepair</h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Consola de Control de Ingeniería</p>
+            <h2 className="text-xl font-black text-white uppercase tracking-tighter leading-none">Ingeniería Biomédica</h2>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">Laboratorio de Control</p>
           </div>
         </div>
 
