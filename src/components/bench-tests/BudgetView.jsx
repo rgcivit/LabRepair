@@ -594,7 +594,7 @@ Por favor, responda *APROBADO* para iniciar.`;
           <div className="bg-slate-900/60 p-4 border border-slate-900 rounded-xl space-y-2 font-mono text-[11px] text-slate-400">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>{curSymbol} {preTaxSubtotal.toLocaleString('es-AR')}</span>
+              <span>{curSymbol} {repairSubtotal.toLocaleString('es-AR')}</span>
             </div>
 
             {parseFloat(discountValue || 0) > 0 && (
