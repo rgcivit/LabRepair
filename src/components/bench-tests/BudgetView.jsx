@@ -18,7 +18,11 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const [partQuality, setPartQuality] = useState('ORIGINAL'); // ORIGINAL | ALTERNATIVO | REACONDICIONADO
   const [isClientPartAddition, setIsClientPartAddition] = useState(false);
 
-  // 2. Costos Adicionales y Finanzas (Tarjeta 2)
+  // Estados para agregar repuesto rápido
+  const [isAddingQuickPart, setIsAddingQuickPart] = useState(false);
+  const [quickPart, setQuickPart] = useState({ name: '', price: '0', category: 'GENERAL', equipmentType: 'General' });
+
+  // Cargar datos pre-existentes de la OT seleccionada
   const [currency, setCurrency] = useState('ARS'); // ARS | USD
   const [ivaRate, setIvaRate] = useState(0); // 0 | 10.5 | 21
   const [discountValue, setDiscountValue] = useState('0');
@@ -137,6 +141,33 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     setAddQty('1');
     setPartQuality('ORIGINAL');
     setIsClientPartAddition(false);
+  };
+
+  const handleQuickPartSubmit = async (e) => {
+    e.preventDefault();
+    if (!quickPart.name) return;
+
+    const newItem = {
+      ...quickPart,
+      stock: 99,
+      minStock: 0,
+      price: parseFloat(quickPart.price) || 0
+    };
+
+    // Esto asume que onSaveInventoryItem está disponible o inyectamos la función
+    // Como no está, lo agregamos localmente a la lista de imputados directamente
+    // y lo reportamos al padre si quisiéramos persistirlo en almacén.
+
+    setImputedParts(prev => [...prev, {
+      id: `NEW-${Date.now()}`,
+      name: newItem.name,
+      quantity: 1,
+      price: newItem.price,
+      quality: 'ORIGINAL'
+    }]);
+
+    setIsAddingQuickPart(false);
+    setQuickPart({ name: '', price: '0', category: 'GENERAL', equipmentType: 'General' });
   };
 
   const handleRemovePart = (partId, qty, quality) => {
@@ -333,7 +364,66 @@ Por favor, responda *APROBADO* para iniciar.`;
             >
               ➕ Imputar Componente
             </button>
+
+            <button
+              type="button"
+              onClick={() => setIsAddingQuickPart(true)}
+              className="w-full py-2 text-[10px] font-bold text-cyan-400 border border-cyan-800/30 rounded uppercase tracking-tighter hover:bg-cyan-950/20"
+            >
+              ✨ Nuevo Insumo No Listado...
+            </button>
           </form>
+
+          {/* MODAL RAPIDO PARA AGREGAR INSUMO */}
+          {isAddingQuickPart && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+              <div className="fixed inset-0 bg-black/80" onClick={() => setIsAddingQuickPart(false)} />
+              <div className="relative w-full max-w-sm bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h4 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                  <Plus className="text-cyan-400" size={18} />
+                  Registrar Nuevo Insumo
+                </h4>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Descripción</label>
+                    <input
+                      type="text"
+                      value={quickPart.name}
+                      onChange={e => setQuickPart({...quickPart, name: e.target.value})}
+                      placeholder="Ej: Manguera siliconada"
+                      className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Precio Unit.</label>
+                      <input
+                        type="number"
+                        value={quickPart.price}
+                        onChange={e => setQuickPart({...quickPart, price: e.target.value})}
+                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Soporte</label>
+                      <input
+                        type="text"
+                        value={quickPart.equipmentType}
+                        onChange={e => setQuickPart({...quickPart, equipmentType: e.target.value})}
+                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 text-xs text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setIsAddingQuickPart(false)} className="flex-1 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cancelar</button>
+                  <button onClick={handleQuickPartSubmit} className="flex-1 py-2 bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 text-[10px] font-black rounded uppercase">Registrar e Imputar</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="bg-slate-900/40 rounded-lg border border-slate-900 overflow-hidden">
             <div className="px-3 py-2 bg-slate-900/80 text-[9px] font-bold text-slate-500 uppercase tracking-widest">

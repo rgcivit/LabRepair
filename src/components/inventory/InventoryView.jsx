@@ -378,34 +378,63 @@ export default function InventoryView({ inventory, onSaveItem }) {
                 {/* Categoría */}
                 <div>
                   <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5">Categoría <span className="text-red-500">*</span></label>
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleFormChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 cursor-pointer focus:outline-none"
-                  >
-                    {CATEGORIES.filter(c => c !== 'TODOS').map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <select
+                      name="category"
+                      value={CATEGORIES.includes(form.category) ? form.category : "OTRA"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(prev => ({ ...prev, category: val === "OTRA" ? "" : val }));
+                      }}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 cursor-pointer focus:outline-none"
+                    >
+                      {CATEGORIES.filter(c => c !== 'TODOS').map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      <option value="OTRA">+ Nueva Categoría...</option>
+                    </select>
+                    {(!CATEGORIES.includes(form.category) || form.category === "") && (
+                      <input
+                        type="text"
+                        placeholder="Nombre de categoría..."
+                        value={form.category}
+                        onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value.toUpperCase() }))}
+                        className="w-full bg-zinc-800 border border-cyan-500/30 rounded p-2 text-xs text-cyan-400 placeholder-zinc-600 outline-none"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* Compatibilidad */}
                 <div>
                   <label className="block text-[10px] text-zinc-500 uppercase font-bold tracking-wider mb-1.5">Soporte Aparatología</label>
-                  <select
-                    name="equipmentType"
-                    value={form.equipmentType}
-                    onChange={handleFormChange}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 cursor-pointer focus:outline-none"
-                  >
-                    <option value="Criolipólisis">Criolipólisis</option>
-                    <option value="Láser Diodo">Láser Diodo</option>
-                    <option value="Radiofrecuencia">Radiofrecuencia</option>
-                    <option value="Cavitador">Cavitador</option>
-                    <option value="Vacumterapia">Vacumterapia</option>
-                    <option value="General">General / Compatible</option>
-                  </select>
+                  <div className="space-y-2">
+                    <select
+                      name="equipmentType"
+                      value={["Criolipólisis", "VelaShape", "Radiofrecuencia", "Láser Diodo", "General"].includes(form.equipmentType) ? form.equipmentType : "OTRO"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(prev => ({ ...prev, equipmentType: val === "OTRO" ? "" : val }));
+                      }}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-zinc-100 cursor-pointer focus:outline-none"
+                    >
+                      <option value="General">General / Compatible</option>
+                      <option value="Criolipólisis">Criolipólisis</option>
+                      <option value="VelaShape">VelaShape</option>
+                      <option value="Radiofrecuencia">Radiofrecuencia</option>
+                      <option value="Láser Diodo">Láser Diodo</option>
+                      <option value="OTRO">+ Nueva Aparatología...</option>
+                    </select>
+                    {(!["Criolipólisis", "VelaShape", "Radiofrecuencia", "Láser Diodo", "General"].includes(form.equipmentType) || form.equipmentType === "") && (
+                      <input
+                        type="text"
+                        placeholder="Nombre del equipo..."
+                        value={form.equipmentType}
+                        onChange={(e) => setForm(prev => ({ ...prev, equipmentType: e.target.value }))}
+                        className="w-full bg-zinc-800 border border-cyan-500/30 rounded p-2 text-xs text-cyan-400 placeholder-zinc-600 outline-none"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 
