@@ -47,6 +47,7 @@ export default function App() {
   const [inventory, setInventory] = useState([]);
   const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCloudConnected, setIsCloudConnected] = useState(false);
 
   // Control de modales y paneles
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
@@ -78,6 +79,11 @@ export default function App() {
       setOrders(fetchedOrders);
       setInventory(fetchedInventory);
       setClients(fetchedClients);
+
+      // Verificar conexión real con Supabase
+      const { data, error } = await supabase.from('work_orders').select('id').limit(1);
+      setIsCloudConnected(!error);
+
       setIsLoading(false);
     };
 
@@ -1038,8 +1044,10 @@ export default function App() {
       <footer className="bg-slate-950 border-t border-slate-850 py-3.5 px-6 text-center text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-2.5">
         <p className="font-medium">Desarrollado por Rodrigo Guevara Civit - Konectaapp.com</p>
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-          <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest">Laboratorio LabRepair Inc. • Servidor Cloud Activo</span>
+          <span className={`h-1.5 w-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-500 shadow-glow shadow-emerald-500' : 'bg-rose-500 animate-pulse shadow-glow shadow-rose-500'}`}></span>
+          <span className={`font-mono text-[10px] uppercase tracking-widest ${isCloudConnected ? 'text-slate-500' : 'text-rose-400 font-bold'}`}>
+            {isCloudConnected ? 'Servidor Cloud Sincronizado' : 'Sin Sincronización (Modo Local)'}
+          </span>
         </div>
       </footer>
 
