@@ -1,7 +1,7 @@
 const USERS_KEY = 'labrepair_users';
 const CURRENT_USER_KEY = 'labrepair_current_user';
 
-// Listado de usuarios iniciales
+// Listado de usuarios iniciales - Sincronizado con Vercel
 const INITIAL_USERS = [
   {
     name: 'Rodrigo Guevara Civit',
