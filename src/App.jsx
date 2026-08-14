@@ -65,6 +65,11 @@ export default function App() {
   // Control del menú hamburguesa (móvil)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Estados para Pull-to-Refresh (Móvil)
+  const [startY, setStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Carga inicial y suscripción en tiempo real
   useEffect(() => {
     const initData = async () => {
@@ -103,14 +108,39 @@ export default function App() {
     };
   }, []);
 
-  // Sincroniza datos en tiempo real
   const refreshData = async () => {
+    setIsRefreshing(true);
     const fetchedOrders = await getWorkOrders();
     const fetchedInventory = await getInventory();
     const fetchedClients = await getClients();
     setOrders(fetchedOrders);
     setInventory(fetchedInventory);
     setClients(fetchedClients);
+    setIsRefreshing(false);
+  };
+
+  const handleTouchStart = (e) => {
+    // Solo si el scroll está arriba del todo
+    if (window.scrollY <= 0) {
+      setStartY(e.touches[0].pageY);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    const currentY = e.touches[0].pageY;
+    const distance = currentY - startY;
+    if (window.scrollY <= 0 && distance > 0) {
+      // Aplicar resistencia al deslizamiento
+      setPullDistance(Math.min(distance / 2.5, 70));
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullDistance > 55) {
+      await refreshData();
+    }
+    setPullDistance(0);
+    setStartY(0);
   };
 
   const handleOpenNewOrder = () => {
@@ -338,7 +368,27 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div
+      className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden relative"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* INDICADOR PULL-TO-REFRESH */}
+      <div
+        className="fixed left-1/2 -translate-x-1/2 z-[1000] pointer-events-none transition-all duration-200"
+        style={{
+          top: `${pullDistance}px`,
+          opacity: pullDistance > 10 ? 1 : 0,
+          transform: `translateX(-50%) rotate(${pullDistance * 4}deg)`
+        }}
+      >
+        <div className="bg-cyan-500 text-slate-950 p-2 rounded-full shadow-lg shadow-cyan-500/20 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </div>
+      </div>
       
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
