@@ -83,21 +83,26 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const urgencyCostNum = parseFloat(urgencyCost) || 0;
   const discountValueNum = parseFloat(discountValue) || 0;
 
-  const baseSubtotal = laborCostNum + partsSubtotal;
-  const logisticsSubtotal = freightCostNum + diagnosisCostNum + urgencyCostNum;
-  const preTaxSubtotal = baseSubtotal + logisticsSubtotal;
+  // 1. Subtotal de lo que hay que cobrar por el trabajo actual
+  const repairSubtotal = laborCostNum + partsSubtotal + freightCostNum + urgencyCostNum;
 
-  // Cálculo de descuento comercial (Garantizar que se aplique correctamente)
+  // 2. Cálculo de descuento comercial sobre el trabajo
   const discountAmount = discountType === 'PERCENT'
-    ? preTaxSubtotal * (discountValueNum / 100)
+    ? repairSubtotal * (discountValueNum / 100)
     : discountValueNum;
 
-  // Base imponible considerando descuento y cargo pendiente de revisión
-  const taxableBase = Math.max(0, preTaxSubtotal - discountAmount + (diagnosisFeeMode === 'PENDING' ? diagnosisCostNum : 0));
-  const ivaAmount = taxableBase * (parseFloat(ivaRate || 0) / 100);
+  // 3. Base antes de impuestos y abonos
+  const netBeforeAbono = Math.max(0, repairSubtotal - discountAmount);
+  const ivaAmount = netBeforeAbono * (parseFloat(ivaRate || 0) / 100);
 
-  // El gran total incluye el descuento, el IVA y el ajuste del abono pagado
-  const grandTotal = taxableBase + ivaAmount + (diagnosisFeeMode === 'PAID' ? -diagnosisCostNum : 0);
+  // 4. TOTAL FINAL: Se suma IVA y se AJUSTA por el abono de revisión
+  let grandTotal = netBeforeAbono + ivaAmount;
+
+  if (diagnosisFeeMode === 'PENDING') {
+    grandTotal += diagnosisCostNum;
+  } else if (diagnosisFeeMode === 'PAID') {
+    grandTotal -= diagnosisCostNum;
+  }
 
   // Símbolo de moneda visual
   const curSymbol = currency === 'USD' ? 'US$' : '$';

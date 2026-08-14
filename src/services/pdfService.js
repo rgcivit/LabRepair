@@ -284,38 +284,52 @@ export const generateBudgetPDF = async (order, appLogo) => {
   doc.text(`$${subtotalBase.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
   currentY += 6;
 
+  let currentTotal = subtotalBase;
+
+  // Descuento
   if (Number(details.discountValue || 0) > 0) {
-    const dType = details.discountType === 'PERCENT' ? '%' : '$';
     const dVal = Number(details.discountValue);
     const dAmt = details.discountType === 'PERCENT' ? (subtotalBase * (dVal / 100)) : dVal;
 
-    doc.setTextColor(220, 38, 38); // Rojo Intenso
-    doc.text(`DESCUENTO COMERCIAL (${dVal}${dType}):`, labelX, currentY);
+    doc.setTextColor(220, 38, 38);
+    doc.text(`DESCUENTO COMERCIAL:`, labelX, currentY);
     doc.text(`-$${dAmt.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
     doc.setTextColor(30, 41, 59);
     currentY += 6;
+    currentTotal -= dAmt;
   }
 
+  // IVA
+  if (Number(details.ivaRate || 0) > 0) {
+    const ivaAmt = currentTotal * (Number(details.ivaRate) / 100);
+    doc.text(`IVA (${details.ivaRate}%):`, labelX, currentY);
+    doc.text(`$${ivaAmt.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
+    currentY += 6;
+    currentTotal += ivaAmt;
+  }
+
+  // Abono Revisión
+  const diagFee = Number(details.diagnosisCost || 0);
   if (details.diagnosisFeeMode === 'PAID') {
-    doc.setTextColor(16, 185, 129); // Esmeralda
+    doc.setTextColor(16, 185, 129);
     doc.text(`ABONO REVISIÓN (YA PAGADO):`, labelX, currentY);
-    doc.text(`-$${Number(details.diagnosisCost || 20000).toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
+    doc.text(`-$${diagFee.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
     doc.setTextColor(30, 41, 59);
     currentY += 6;
+    currentTotal -= diagFee;
   } else if (details.diagnosisFeeMode === 'PENDING') {
     doc.text(`CARGO POR REVISIÓN/DIAG:`, labelX, currentY);
-    doc.text(`$${Number(details.diagnosisCost || 20000).toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
+    doc.text(`$${diagFee.toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
     currentY += 6;
+    currentTotal += diagFee;
   }
-
-  const finalTotal = Number(details.grandTotal || (subtotalBase - (details.diagnosisFeeMode === 'PAID' ? 20000 : 0)));
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setDrawColor(200, 200, 200);
   doc.line(labelX, currentY - 2, rightAlignX, currentY - 2);
   doc.text(`TOTAL FINAL NETO:`, labelX, currentY + 4);
-  doc.text(`$${finalTotal.toLocaleString()}`, rightAlignX, currentY + 4, { align: 'right' });
+  doc.text(`$${currentTotal.toLocaleString()}`, rightAlignX, currentY + 4, { align: 'right' });
 
   renderTermsAndConditions(doc, currentY + 15);
 
