@@ -30,8 +30,8 @@ export default function LoginView({ onLoginSuccess }) {
   };
 
   const handleQuickLogin = () => {
-    setUsernameOrEmail('rodrigo');
-    setPassword('admin');
+    setUsernameOrEmail('rgcivit');
+    setPassword('prinoth');
     setError('');
   };
 

@@ -23,8 +23,18 @@ const INITIAL_USERS = [
  * Inicializa la tabla de usuarios en LocalStorage si no existe.
  */
 const initUsers = () => {
-  if (!localStorage.getItem(USERS_KEY)) {
+  const existing = localStorage.getItem(USERS_KEY);
+  if (!existing) {
     localStorage.setItem(USERS_KEY, JSON.stringify(INITIAL_USERS));
+  } else {
+    // MIGRACIÓN: Asegurar que rgcivit esté presente si ya había usuarios cargados
+    try {
+      const users = JSON.parse(existing);
+      if (!users.some(u => u.username === 'rgcivit')) {
+        const updated = [...users, INITIAL_USERS[0]];
+        localStorage.setItem(USERS_KEY, JSON.stringify(updated));
+      }
+    } catch (e) {}
   }
 };
 
