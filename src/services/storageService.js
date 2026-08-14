@@ -228,13 +228,37 @@ export const getInventory = async () => {
 };
 
 export const saveInventoryItem = async (item) => {
+  const itemId = item.id || `INS-${Math.floor(1000 + Math.random() * 9000)}`;
+  const cleanItem = { ...item, id: itemId };
+
+  // 1. ACTUALIZACIÓN LOCAL INMEDIATA (Respaldo en celular)
+  const localData = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
+  const index = localData.findIndex(i => i.id === itemId);
+  let updatedLocal;
+  if (index >= 0) {
+    updatedLocal = localData.map(i => i.id === itemId ? cleanItem : i);
+  } else {
+    updatedLocal = [cleanItem, ...localData];
+  }
+  safeSaveLocal(INVENTORY_KEY, updatedLocal);
+
+  // 2. INTENTO DE GUARDADO EN NUBE (Supabase)
   try {
-    const snakeItem = mapToSnakeCase(item, 'inventory');
+    const snakeItem = mapToSnakeCase(cleanItem, 'inventory');
     const { error } = await supabase.from('inventory').upsert(snakeItem);
-    if (error) throw error;
+
+    if (error) {
+      if (error.status === 404) {
+        console.warn("Tabla 'inventory' no existe en Supabase. Se mantiene en memoria local.");
+      } else {
+        throw error;
+      }
+    }
+    // Si subió bien, retornamos la lista fresca de la nube para asegurar orden
     return await getInventory();
   } catch (error) {
-    return JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
+    console.error("Fallo guardado inventario en nube:", error);
+    return updatedLocal; // Retornar lo local si la nube falla
   }
 };
 
