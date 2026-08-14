@@ -94,35 +94,33 @@ const safeSaveLocal = (key, data) => {
 };
 
 /**
- * Sube un archivo Base64 a Supabase Storage
+ * Sube un archivo Base64 a Supabase Storage (Optimizado para Velocidad)
  */
 export const uploadFile = async (base64, path) => {
   if (!base64 || !base64.startsWith('data:')) return base64;
   try {
-    const base64Data = base64.split(',')[1];
-    const contentType = base64.split(';')[0].split(':')[1];
+    const parts = base64.split(',');
+    const base64Data = parts[1];
+    const contentType = parts[0].split(';')[0].split(':')[1];
+
+    // Optimización: Conversión directa de Base64 a Blob (mucho más rápido que loops manuales)
     const byteCharacters = atob(base64Data);
-    const byteArrays = [];
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      byteArrays.push(new Uint8Array(byteNumbers));
+    const byteNumbers = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-    const blob = new Blob(byteArrays, { type: contentType });
+    const blob = new Blob([byteNumbers], { type: contentType });
 
     const { data, error } = await supabase.storage
       .from('labrepair-assets')
-      .upload(path, blob, { upsert: true });
+      .upload(path, blob, { upsert: true, cacheControl: '3600' });
 
     if (error) throw error;
     const { data: { publicUrl } } = supabase.storage.from('labrepair-assets').getPublicUrl(path);
     return publicUrl;
   } catch (err) {
     console.error("Error subiendo archivo:", err);
-    return base64; // Fallback al base64 si falla la subida
+    return base64;
   }
 };
 
