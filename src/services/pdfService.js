@@ -247,11 +247,13 @@ export const generateBudgetPDF = async (order, appLogo) => {
 
   const budgetItems = spareParts.map(p => {
     const isClientPart = Number(p.price || 0) === 0;
+    const qty = Number(p.quantity || p.qty || 1);
+    const price = Number(p.price || p.precio || 0);
     return [
       isClientPart ? `${p.name} (Provisto por el cliente - $0)` : p.name,
-      p.qty || p.quantity || 1,
-      `$${Number(p.price || p.precio || 0).toLocaleString()}`,
-      `$${(Number(p.qty || 1) * Number(p.price || 0)).toLocaleString()}`
+      qty,
+      `$${price.toLocaleString()}`,
+      `$${(qty * price).toLocaleString()}`
     ];
   });
   
@@ -269,7 +271,7 @@ export const generateBudgetPDF = async (order, appLogo) => {
   const details = order.budgetDetails || {};
 
   // Totales Detallados (Ajuste de Margen y Fuente)
-  const partsTotal = spareParts.reduce((acc, p) => acc + (Number(p.qty || 1) * Number(p.price || 0)), 0);
+  const partsTotal = spareParts.reduce((acc, p) => acc + (Number(p.quantity || p.qty || 1) * Number(p.price || 0)), 0);
   const subtotalBase = partsTotal + laborCost;
 
   doc.setFontSize(8.5);
