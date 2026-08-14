@@ -297,12 +297,12 @@ export const generateBudgetPDF = async (order, appLogo) => {
   if (details.diagnosisFeeMode === 'PAID') {
     doc.setTextColor(16, 185, 129); // Esmeralda
     doc.text(`ABONO REVISIÓN (YA PAGADO):`, labelX, currentY);
-    doc.text(`-$20.000`, rightAlignX, currentY, { align: 'right' });
+    doc.text(`-$${Number(details.diagnosisCost || 20000).toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
     doc.setTextColor(30, 41, 59);
     currentY += 6;
   } else if (details.diagnosisFeeMode === 'PENDING') {
     doc.text(`CARGO POR REVISIÓN/DIAG:`, labelX, currentY);
-    doc.text(`$20.000`, rightAlignX, currentY, { align: 'right' });
+    doc.text(`$${Number(details.diagnosisCost || 20000).toLocaleString()}`, rightAlignX, currentY, { align: 'right' });
     currentY += 6;
   }
 

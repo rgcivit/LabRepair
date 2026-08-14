@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Trash2 } from "lucide-react";
 import { generateBudgetPDF } from '../../services/pdfService';
 import logo from '../logo laboratorio.jpeg';
 
@@ -28,7 +29,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const [discountValue, setDiscountValue] = useState('0');
   const [discountType, setDiscountType] = useState('PERCENT'); // PERCENT | FIXED
   const [freightCost, setFreightCost] = useState('0');
-  const [diagnosisCost, setDiagnosisCost] = useState('0');
+  const [diagnosisCost, setDiagnosisCost] = useState('20000');
   const [urgencyCost, setUrgencyCost] = useState('0');
   const [diagnosisFeeMode, setDiagnosisFeeMode] = useState('NONE'); // NONE | PENDING | PAID
 
@@ -92,11 +93,11 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     : discountValueNum;
 
   // Base imponible considerando descuento y cargo pendiente de revisión
-  const taxableBase = Math.max(0, preTaxSubtotal - discountAmount + (diagnosisFeeMode === 'PENDING' ? 20000 : 0));
+  const taxableBase = Math.max(0, preTaxSubtotal - discountAmount + (diagnosisFeeMode === 'PENDING' ? diagnosisCostNum : 0));
   const ivaAmount = taxableBase * (parseFloat(ivaRate || 0) / 100);
 
   // El gran total incluye el descuento, el IVA y el ajuste del abono pagado
-  const grandTotal = taxableBase + ivaAmount + (diagnosisFeeMode === 'PAID' ? -20000 : 0);
+  const grandTotal = taxableBase + ivaAmount + (diagnosisFeeMode === 'PAID' ? -diagnosisCostNum : 0);
 
   // Símbolo de moneda visual
   const curSymbol = currency === 'USD' ? 'US$' : '$';
@@ -261,7 +262,7 @@ ${selectedOT.diagnosis || 'Ingresado para control y diagnóstico técnico.'}
 
 💰 *DESGLOSE:*
 • *Ingeniería:* ${curSymbol} ${parseFloat(laborCost).toLocaleString('es-AR')}
-${freightCost > 0 ? `• *Flete:* ${curSymbol} ${parseFloat(freightCost).toLocaleString('es-AR')}\n` : ''}${diagnosisFeeMode === 'PENDING' ? `• *Abono Revisión:* + ${curSymbol} 20.000\n` : ''}${diagnosisFeeMode === 'PAID' ? `• *Crédito por Abono:* - ${curSymbol} 20.000\n` : ''}
+${freightCost > 0 ? `• *Flete:* ${curSymbol} ${parseFloat(freightCost).toLocaleString('es-AR')}\n` : ''}${diagnosisFeeMode === 'PENDING' ? `• *Abono Revisión:* + ${curSymbol} ${diagnosisCostNum.toLocaleString()}\n` : ''}${diagnosisFeeMode === 'PAID' ? `• *Crédito por Abono:* - ${curSymbol} ${diagnosisCostNum.toLocaleString()}\n` : ''}
 *Repuestos:*
 ${partsTextList}
 
@@ -431,16 +432,31 @@ Por favor, responda *APROBADO* para iniciar.`;
             </div>
             <div className="max-h-40 overflow-y-auto">
               <table className="w-full text-left text-[11px] text-slate-400">
+                <thead className="bg-slate-950/50 text-[9px] uppercase font-black text-slate-500 sticky top-0">
+                  <tr>
+                    <th className="py-2 px-3">Insumo</th>
+                    <th className="py-2 px-2 text-center">Cant.</th>
+                    <th className="py-2 px-2 text-right">P. Unit</th>
+                    <th className="py-2 px-2 text-right">Subtotal</th>
+                    <th className="py-2 px-2 text-right"></th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-slate-900">
                   {imputedParts.map((part, index) => (
-                    <tr key={`${part.id}-${part.quality}-${index}`}>
+                    <tr key={`${part.id}-${part.quality}-${index}`} className="hover:bg-slate-900/30 transition-colors">
                       <td className="py-2.5 px-3">
-                        <span className="font-bold text-slate-350">{part.name}</span>
+                        <span className="font-bold text-slate-200 block truncate max-w-[120px]">{part.name}</span>
+                        <span className="text-[8px] text-slate-500 uppercase">{part.quality}</span>
                       </td>
                       <td className="py-2.5 px-2 text-center font-bold text-slate-300">x{part.quantity}</td>
-                      <td className="py-2.5 px-2 text-right font-mono">{curSymbol}{part.price.toLocaleString('es-AR')}</td>
+                      <td className="py-2.5 px-2 text-right font-mono text-slate-400">{curSymbol}{Number(part.price || 0).toLocaleString('es-AR')}</td>
+                      <td className="py-2.5 px-2 text-right font-mono font-bold text-cyan-400">
+                        {curSymbol}{(Number(part.price || 0) * Number(part.quantity || 1)).toLocaleString('es-AR')}
+                      </td>
                       <td className="py-2.5 px-2 text-right">
-                        <button type="button" onClick={() => handleRemovePart(part.id, part.quantity, part.quality)} className="text-rose-500">🗑️</button>
+                        <button type="button" onClick={() => handleRemovePart(part.id, part.quantity, part.quality)} className="text-rose-500 hover:text-rose-400 transition-colors">
+                          <Trash2 size={12} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -494,7 +510,10 @@ Por favor, responda *APROBADO* para iniciar.`;
           </div>
 
           <div>
-            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Abono de Revisión / Diagnóstico ($20.000)</label>
+            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 flex justify-between">
+              <span>Abono de Revisión / Diagnóstico</span>
+              <span className="text-cyan-400">Importe: {curSymbol}{diagnosisCostNum.toLocaleString()}</span>
+            </label>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { id: 'NONE', label: 'No Aplicar', color: 'slate' },
@@ -515,8 +534,20 @@ Por favor, responda *APROBADO* para iniciar.`;
                 </button>
               ))}
             </div>
-            <p className="text-[7px] text-slate-600 mt-2 px-1 uppercase font-bold tracking-tighter">
-              * Pendiente: suma $20.000. Pagado: descuenta $20.000 del total.
+            <div className="mt-3">
+              <label className="block text-[9px] text-slate-600 uppercase font-bold mb-1">Monto de Revisión Personalizado</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 text-[10px]">{curSymbol}</span>
+                <input
+                  type="number"
+                  value={diagnosisCost}
+                  onChange={(e) => setDiagnosisCost(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded pl-7 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                />
+              </div>
+            </div>
+            <p className="text-[7px] text-slate-600 mt-2 px-1 uppercase font-bold tracking-tighter leading-tight">
+              * El monto se suma si está Pendiente o se resta si ya fue Pagado (crédito).
             </p>
           </div>
 
@@ -571,7 +602,7 @@ Por favor, responda *APROBADO* para iniciar.`;
             {diagnosisFeeMode !== 'NONE' && (
               <div className={`flex justify-between font-bold ${diagnosisFeeMode === 'PENDING' ? 'text-cyan-400' : 'text-emerald-400'}`}>
                 <span>{diagnosisFeeMode === 'PENDING' ? 'Diagnóstico (+)' : 'Seña/Abono (-)'}:</span>
-                <span>{curSymbol} 20.000</span>
+                <span>{curSymbol} {diagnosisCostNum.toLocaleString('es-AR')}</span>
               </div>
             )}
 
