@@ -29,18 +29,19 @@ export const generateSecuritySeal = async (order) => {
       // Estilo de fuente industrial/mono
       ctx.fillStyle = 'black';
 
-      // 1. FECHA (Ajustar coordenadas según diseño de la faja)
+      // 1. FECHA (Ubicación: Justo después de "FECHA: ")
       const dateText = new Date().toLocaleDateString('es-AR');
-      ctx.font = 'bold 24px Arial'; // Ajustar tamaño según resolución de imagen
-      // Coordenadas estimadas para la fecha
-      ctx.fillText(dateText, canvas.width * 0.15, canvas.height * 0.85);
+      ctx.font = 'bold 32px Arial'; // Un poco más grande para legibilidad
+      ctx.textAlign = 'left';
+      // Coordenadas para encuadrar en el espacio en blanco de la línea FECHA
+      ctx.fillText(dateText, canvas.width * 0.35, canvas.height * 0.525);
 
-      // 2. NÚMERO DE ORDEN (Debajo del código de barras)
+      // 2. NÚMERO DE ORDEN (Debajo del código de barras, centrado)
       const orderId = order.id || order.order_id || 'S/D';
-      ctx.font = 'bold 32px "Courier New", monospace';
+      ctx.font = 'black 40px "Courier New", monospace';
       ctx.textAlign = 'center';
-      // Coordenadas estimadas: centrado debajo del código de barras
-      ctx.fillText(orderId, canvas.width * 0.75, canvas.height * 0.85);
+      // Ubicación centrada en la base de la faja (donde borraste el número largo)
+      ctx.fillText(orderId, canvas.width * 0.5, canvas.height * 0.94);
 
       // --- EXPORTACIÓN Y COMPARTICIÓN ---
       const base64Image = canvas.toDataURL('image/png');
