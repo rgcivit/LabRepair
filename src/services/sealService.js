@@ -14,7 +14,7 @@ export const generateSecuritySeal = async (order) => {
   const img = new Image();
 
   // Cargamos la plantilla desde la carpeta pública
-  img.src = '/faja de garantia.png';
+  img.src = '/faja de seguridad.png';
 
   return new Promise((resolve, reject) => {
     img.onload = async () => {
@@ -85,7 +85,7 @@ export const generateSecuritySeal = async (order) => {
 
     img.onerror = (err) => {
       console.error("Error cargando plantilla de faja:", err);
-      alert("No se encontró la plantilla 'faja de garantia.png' en la carpeta public.");
+      alert("No se encontró la plantilla 'faja de seguridad.png' en la carpeta public.");
       reject(err);
     };
   });
