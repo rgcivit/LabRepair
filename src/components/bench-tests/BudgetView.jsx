@@ -6,8 +6,13 @@ import logo from '../logo laboratorio.jpeg';
 /**
  * Componente BudgetView de alta gama comercial e ingenieril.
  * Agrupa la pantalla en un diseño de 3 columnas de tarjetas de alta fidelidad estética.
+ * @param {Object} props.selectedOT - Orden de trabajo seleccionada.
+ * @param {Array} props.inventory - Listado del inventario actual.
+ * @param {Function} props.onUpdateBudget - Callback para guardar la OT: (updatedOT) => void.
+ * @param {Function} props.onDiscountStock - Callback para descontar stock: (itemId, qty) => void.
+ * @param {Function} props.onSaveInventoryItem - Callback para registrar nuevo insumo: (item) => void.
  */
-export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDiscountStock }) {
+export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDiscountStock, onSaveInventoryItem }) {
   // --- ESTADOS PRINCIPALES ---
   const [laborCost, setLaborCost] = useState('0');
   const [imputedParts, setImputedParts] = useState([]);
@@ -154,16 +159,22 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     if (!quickPart.name) return;
 
     const newItem = {
-      ...quickPart,
+      name: quickPart.name.trim(),
+      category: quickPart.category || 'GENERAL',
+      equipmentType: quickPart.equipmentType || 'General',
       stock: 99,
-      minStock: 0,
+      minStock: 2,
       price: parseFloat(quickPart.price) || 0
     };
 
-    // Esto asume que onSaveInventoryItem está disponible o inyectamos la función
-    // Como no está, lo agregamos localmente a la lista de imputados directamente
-    // y lo reportamos al padre si quisiéramos persistirlo en almacén.
+    // Persistir globalmente en el inventario/base de datos
+    if (onSaveInventoryItem) {
+      await onSaveInventoryItem(newItem);
+    }
 
+    // El sistema de inventario asignará un ID.
+    // Como queremos imputarlo de inmediato, generamos un ID temporal o esperamos el refresh.
+    // Para inmediatez, lo agregamos a la lista local de imputados.
     setImputedParts(prev => [...prev, {
       id: `NEW-${Date.now()}`,
       name: newItem.name,

@@ -34,7 +34,7 @@ const STATUSES = [
 ];
 const MAX_IMAGES = 4;
 
-const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = [] }) => {
+const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = [], onSaveClient }) => {
   const [formData, setFormData] = React.useState({
     clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
     brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
@@ -240,6 +240,20 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
         images: Array.isArray(order.images) ? order.images : [],
         spareParts: Array.isArray(order.spareParts) ? order.spareParts : []
       };
+
+      // 0. Auto-registrar cliente si es nuevo
+      const clientExists = clients.some(c =>
+        c.name.toLowerCase() === finalData.clientName.toLowerCase() ||
+        c.phone === finalData.clientPhone
+      );
+
+      if (!clientExists && onSaveClient) {
+        await onSaveClient({
+          name: finalData.clientName,
+          phone: finalData.clientPhone,
+          notes: "Registrado automáticamente desde ingreso de equipo."
+        });
+      }
 
       // 1. Guardar en Supabase / Storage
       const updatedList = await saveWorkOrder(finalData);

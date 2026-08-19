@@ -39,7 +39,7 @@ export default function SignatureModal({ isOpen, onClose, onSave, title = "Firma
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200">
         <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
           <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">{title}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
@@ -48,7 +48,7 @@ export default function SignatureModal({ isOpen, onClose, onSave, title = "Firma
         </div>
 
         <div className="p-6 bg-slate-100 select-none">
-          <div className="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden shadow-inner h-64 touch-none">
+          <div className="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden shadow-inner h-96 touch-none">
             <canvas
               ref={canvasRef}
               className="w-full h-full touch-none cursor-crosshair"

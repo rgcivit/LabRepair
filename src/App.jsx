@@ -645,254 +645,136 @@ export default function App() {
         )}
 
         {/* ÁREA DE CONTENIDO DINÁMICO */}
-        <main className="flex-1 p-6 space-y-6 overflow-x-hidden">
+        <main className="flex-1 p-3 md:p-6 space-y-6 overflow-x-hidden">
           {(activeTab === 'dashboard' || activeTab === 'orders') && (
-            <>
-              {/* TARJETAS DE MÉTRICAS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
-                  <div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Órdenes Activas</span>
-                    <h3 className="text-3xl font-black text-white mt-1">{activeOrdersCount}</h3>
-                    <p className="text-[10px] text-cyan-400 mt-1">En taller actualmente</p>
+            <div className="flex flex-col lg:flex-row gap-6">
+
+              {/* COLUMNA IZQUIERDA: MÉTRICAS Y LISTA (PARA TABLET) */}
+              <div className={`flex-1 space-y-6 ${selectedOrder ? 'hidden lg:block lg:w-1/3' : 'w-full'}`}>
+                {/* TARJETAS DE MÉTRICAS - DISEÑO COMPACTO PARA TABLET */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 gap-3">
+                  <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Activas</span>
+                      <h3 className="text-xl font-black text-white">{activeOrdersCount}</h3>
+                    </div>
+                    <div className="p-2 bg-cyan-950 text-cyan-400 border border-cyan-800/30 rounded-lg">
+                      <ClipboardList size={18} />
+                    </div>
                   </div>
-                  <div className="p-3 bg-cyan-950 text-cyan-400 border border-cyan-800/30 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12M11.42 7.7a1.5 1.5 0 011.5 1.5v2.12m0 0a1.5 1.5 0 01-1.5 1.5h-2.12" />
-                    </svg>
+
+                  <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">Mantenimientos</span>
+                      <h3 className="text-xl font-black text-cyan-400">{maintenanceReminders.length}</h3>
+                    </div>
+                    <div className="p-2 bg-amber-950/40 text-amber-400 border border-amber-800/20 rounded-lg">
+                      <Bell size={18} />
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
-                  <div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Esperando Repuesto</span>
-                    <h3 className="text-3xl font-black text-white mt-1">{waitingPartsCount}</h3>
-                    <p className="text-[10px] text-amber-500 mt-1">Demoras logísticas</p>
-                  </div>
-                  <div className="p-3 bg-amber-950/40 text-amber-400 border border-amber-800/20 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
-                  <div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Listos para Entrega</span>
-                    <h3 className="text-3xl font-black text-emerald-400 mt-1">{readyDeliveryCount}</h3>
-                    <p className="text-[10px] text-emerald-500 mt-1">Control de calidad OK</p>
-                  </div>
-                  <div className="p-3 bg-emerald-950/40 text-emerald-400 border border-emerald-800/20 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
-                  <div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mantenimientos</span>
-                    <h3 className={`text-3xl font-black mt-1 ${maintenanceReminders.length > 0 ? 'text-cyan-400' : 'text-slate-300'}`}>{maintenanceReminders.length}</h3>
-                    <p className="text-[10px] text-cyan-500 mt-1">Equipos +3 meses</p>
-                  </div>
-                  <div className={`p-3 border rounded-lg ${maintenanceReminders.length > 0 ? 'bg-cyan-950/40 text-cyan-400 border-cyan-800/30' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0M3.124 7.5A8.969 8.969 0 015.292 3m13.416 0a8.969 8.969 0 012.168 4.5" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="bg-slate-950 border border-slate-800 p-5 rounded-xl flex items-center justify-between shadow-lg">
-                  <div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Alertas de Stock</span>
-                    <h3 className={`text-3xl font-black mt-1 ${lowStockCount > 0 ? 'text-red-400' : 'text-slate-300'}`}>{lowStockCount}</h3>
-                    <p className="text-[10px] text-red-500 mt-1">Insumos bajo stock crítico</p>
-                  </div>
-                  <div className={`p-3 border rounded-lg ${lowStockCount > 0 ? 'bg-red-950/40 text-red-400 border-red-800/30' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* TABLA PRINCIPAL DE ÓRDENES */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-bold text-white tracking-wide">
-                      {activeTab === 'dashboard' ? 'Últimas Órdenes en Laboratorio' : 'Registro Completo de Órdenes'}
-                    </h3>
-                    <p className="text-xs text-slate-500">Órdenes que se están procesando actualmente en las mesas de pruebas</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                {/* TABLA / LISTA DE ÓRDENES */}
+                <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+                  <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/50 flex items-center justify-between">
+                    <h3 className="text-xs font-black text-white uppercase tracking-wider">Órdenes</h3>
                     <button
                       type="button"
                       onClick={() => exportWorkOrdersToPDF(filteredOrders)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-850 rounded-lg text-xs font-bold text-slate-300 shadow active:scale-95 transition-transform uppercase tracking-wider font-sans"
-                      title="Exportar listado resumen de órdenes"
+                      className="p-1.5 bg-slate-900 border border-slate-800 text-slate-400 rounded-lg"
+                      title="Exportar PDF"
                     >
-                      📄 Reporte de Taller (Lista)
+                      <ClipboardList size={14} />
                     </button>
-
-                    {activeTab === 'orders' && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 font-medium">Estado:</span>
-                        <select
-                          value={statusFilter}
-                          onChange={(e) => setStatusFilter(e.target.value)}
-                          className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
-                        >
-                          <option value="TODOS">Todos</option>
-                          <option value="INGRESO">Ingreso</option>
-                          <option value="EN_DIAGNOSTICO">En Diagnóstico</option>
-                          <option value="PRESUPUESTADO">Presupuestado</option>
-                          <option value="ESPERANDO_REPUESTO">Esperando Repuesto</option>
-                          <option value="EN_PRUEBAS">En Pruebas</option>
-                          <option value="LISTO">Listo</option>
-                          <option value="ENTREGADO">Entregado</option>
-                        </select>
-                      </div>
-                    )}
                   </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                  {filteredOrders.length === 0 ? (
-                    <div className="text-center py-12 px-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 text-slate-600 mx-auto mb-3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                      </svg>
-                      <h4 className="text-slate-400 font-semibold">No se encontraron órdenes de trabajo</h4>
-                      <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
-                        Intenta modificando el filtro de búsqueda o el selector de estados.
-                      </p>
-                    </div>
-                  ) : (
-                    <table className="w-full text-left border-collapse border-spacing-0">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-[11px] text-slate-500 uppercase tracking-wider bg-slate-900/40">
-                          <th className="py-3 px-6 font-bold">Orden ID</th>
-                          <th className="py-3 px-4 font-bold">Aparatología / Equipo</th>
-                          <th className="py-3 px-4 font-bold">Cliente / Clínica</th>
-                          <th className="py-3 px-4 font-bold text-center">Estado</th>
-                          <th className="py-3 px-4 font-bold text-center">Prioridad</th>
-                          <th className="py-3 px-6 font-bold text-right">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-sm">
+                  <div className="overflow-y-auto max-h-[calc(100vh-350px)]">
+                    <table className="w-full text-left border-collapse">
+                      <tbody className="divide-y divide-slate-800/60">
                         {filteredOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-slate-900/60 transition-colors group">
-                            
-                            <td className="py-4 px-6 font-semibold text-cyan-400 tracking-wider">
-                              <span className="bg-slate-900/80 px-2.5 py-1 rounded border border-slate-800 shadow-inner group-hover:border-cyan-500/20 transition-all">
-                                {order.id}
-                              </span>
-                            </td>
-
-                            <td className="py-4 px-4">
-                              <div className="font-semibold text-slate-200">{order.equipmentName || order.deviceType}</div>
-                              <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                <span className="bg-slate-900 px-1.5 py-0.5 rounded text-[10px] text-slate-400 font-mono">S/N: {order.serialNumber || 'S/D'}</span>
+                          <tr
+                            key={order.id}
+                            onClick={() => setSelectedOrder(order)}
+                            className={`cursor-pointer transition-all ${selectedOrder?.id === order.id ? 'bg-cyan-950/20 border-l-4 border-cyan-500' : 'hover:bg-slate-900/60'}`}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex justify-between items-start">
+                                <span className="text-[10px] font-mono font-bold text-cyan-400">{order.id}</span>
+                                <PriorityBadge priority={order.priority} />
+                              </div>
+                              <div className="font-bold text-slate-200 text-sm mt-1 truncate">{order.clientName}</div>
+                              <div className="text-[11px] text-slate-500 truncate">{order.equipmentName || order.deviceType}</div>
+                              <div className="mt-2">
+                                <StatusBadge status={order.status} />
                               </div>
                             </td>
-
-                            <td className="py-4 px-4">
-                              <div className="text-slate-300 font-medium">{order.clientName}</div>
-                              <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                <span className="hover:text-emerald-400 transition-colors">{order.clientPhone}</span>
-                              </div>
-                            </td>
-
-                            <td className="py-4 px-4 text-center">
-                              <select
-                                value={order.status}
-                                onChange={async (e) => {
-                                  const newStatus = e.target.value;
-                                  const updatedOrder = { ...order, status: newStatus };
-                                  await handleSaveOT(updatedOrder);
-                                }}
-                                className="bg-slate-900 border border-slate-800 text-[11px] font-bold rounded-lg px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-cyan-500 text-slate-300 uppercase tracking-tighter"
-                              >
-                                <option value="INGRESO">Ingreso</option>
-                                <option value="EN_DIAGNOSTICO">Diagnóstico</option>
-                                <option value="PRESUPUESTADO">Presupuestado</option>
-                                <option value="ESPERANDO_REPUESTO">Repuesto</option>
-                                <option value="EN_PRUEBAS">En Pruebas</option>
-                                <option value="LISTO">Listo</option>
-                                <option value="ENTREGADO">Entregado</option>
-                              </select>
-                            </td>
-
-                            <td className="py-4 px-4 text-center">
-                              <PriorityBadge priority={order.priority} />
-                            </td>
-
-                            {/* COLUMNA DE ACCIONES CON EL BOTÓN BORRAR */}
-                            <td className="py-4 px-6 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => handleViewDiagnostic(order)}
-                                  className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-950/30 rounded-lg transition-colors"
-                                  title="Diagnóstico"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12M11.42 7.7a1.5 1.5 0 011.5 1.5v2.12m0 0a1.5 1.5 0 01-1.5 1.5h-2.12" />
-                                  </svg>
-                                </button>
-
-                                <button
-                                  onClick={(e) => handleEditOrder(order, e)}
-                                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-950/30 rounded-lg transition-colors"
-                                  title="Editar Ingreso"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
-                                  </svg>
-                                </button>
-
-                                <button
-                                  onClick={() => generateEntryReceipt(order, order.clientSignature, null)}
-                                  className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-950/30 rounded-lg transition-colors"
-                                  title="Comprobante"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                                  </svg>
-                                </button>
-
-                                <button
-                                  onClick={() => generateSecuritySeal(order)}
-                                  className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-950/30 rounded-lg transition-colors"
-                                  title="Imprimir Faja de Garantía"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
-                                  </svg>
-                                </button>
-
-                                <button
-                                  onClick={(e) => handleDeleteOrder(order.id, e)}
-                                  className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 border border-transparent hover:border-rose-900/50 rounded-lg transition-colors"
-                                  title="Borrar Orden"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  )}
+                  </div>
                 </div>
-
               </div>
-            </>
+
+              {/* COLUMNA DERECHA: DETALLE / BANCO (PARA TABLET) */}
+              <div className={`flex-[2] ${!selectedOrder ? 'hidden lg:flex' : 'block'} min-h-[600px]`}>
+                {selectedOrder ? (
+                  <div className="space-y-4 animate-fadeIn">
+                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => setSelectedOrder(null)} className="lg:hidden p-2 text-slate-400">
+                          <X size={20} />
+                        </button>
+                        <div>
+                          <h3 className="text-sm font-black text-white uppercase tracking-widest">Detalle de Intervención</h3>
+                          <p className="text-[10px] text-cyan-400 font-mono">OT: {selectedOrder.id}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditOrder(selectedOrder)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-amber-500">
+                          <Settings2 size={16} />
+                        </button>
+                        <button onClick={() => generateEntryReceipt(selectedOrder, selectedOrder.clientSignature, null)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-emerald-500">
+                          <ClipboardList size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex border border-slate-800 bg-slate-950 p-1 rounded-xl gap-1">
+                      <button
+                        onClick={() => setBenchSubTab('measurements')}
+                        className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${benchSubTab === 'measurements' ? 'bg-slate-900 text-cyan-400 shadow-md' : 'text-slate-500'}`}
+                      >
+                        🔬 Mediciones
+                      </button>
+                      <button
+                        onClick={() => setBenchSubTab('budget')}
+                        className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${benchSubTab === 'budget' ? 'bg-slate-900 text-emerald-400 shadow-md' : 'text-slate-500'}`}
+                      >
+                        💵 Presupuesto
+                      </button>
+                    </div>
+
+                    {benchSubTab === 'measurements' ? (
+                      <BenchTestView selectedOT={selectedOrder} onSaveOT={handleSaveOT} inventory={inventory} onGeneratePDF={generateQCCertificate} />
+                    ) : (
+                      <BudgetView selectedOT={selectedOrder} inventory={inventory} onUpdateBudget={handleSaveOT} onDiscountStock={handleDiscountStock} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-slate-950/30 border-2 border-dashed border-slate-800 rounded-3xl p-12 text-center">
+                    <div className="max-w-xs">
+                      <div className="h-16 w-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-700">
+                        <ClipboardList size={32} />
+                      </div>
+                      <h4 className="text-slate-400 font-black uppercase tracking-widest text-sm">Vista de Detalle</h4>
+                      <p className="text-xs text-slate-600 mt-2">Seleccione una orden de la lista izquierda para gestionar el diagnóstico o presupuesto en esta pantalla.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
           )}
 
           {activeTab === 'diagnostic' && (
@@ -1003,6 +885,7 @@ export default function App() {
                           inventory={inventory}
                           onUpdateBudget={handleSaveOT}
                           onDiscountStock={handleDiscountStock}
+                          onSaveInventoryItem={handleSaveInventoryItemGlobal}
                         />
                       )}
                     </div>
@@ -1131,6 +1014,7 @@ export default function App() {
         onSave={refreshData}
         editingOrder={editingOrder}
         clients={clients}
+        onSaveClient={handleSaveClient}
       />
 
       {/* MODAL CAMBIO DE CONTRASEÑA */}
