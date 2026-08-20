@@ -25,22 +25,31 @@ export default function FinancialReportsView({ orders }) {
     };
 
     orders.forEach(order => {
-      if (order.status === 'ENTREGADO') {
-        const amount = parseFloat(order.grandTotal || order.cost || 0);
-        const orderDate = new Date(order.entryDate || order.created_at);
+      const details = order.budgetDetails || {};
+      const diagFee = parseFloat(details.diagnosisCost || 0);
+      const isDiagPaid = details.diagnosisFeeMode === 'PAID';
+
+      // 1. SUMAR ABONOS DE REVISIÓN PAGADOS (En cualquier estado)
+      if (isDiagPaid) {
+        const orderDate = new Date(order.created_at || order.entryDate);
         const orderDateStr = orderDate.toISOString().split('T')[0];
 
-        // Diario
-        if (orderDateStr === today) stats.daily += amount;
+        if (orderDateStr === today) stats.daily += diagFee;
+        if (orderDate >= startOfWeek) stats.weekly += diagFee;
+        if (orderDate >= startOfMonth) stats.monthly += diagFee;
+        stats.total += diagFee;
+      }
 
-        // Semanal
-        if (orderDate >= startOfWeek) stats.weekly += amount;
+      // 2. SUMAR TRABAJOS ENTREGADOS (El saldo facturado)
+      if (order.status === 'ENTREGADO') {
+        const repairBalance = parseFloat(order.estimatedBudget || details.grandTotal || 0);
+        const deliveryDate = new Date(order.entryDate || order.created_at);
+        const deliveryDateStr = deliveryDate.toISOString().split('T')[0];
 
-        // Mensual
-        if (orderDate >= startOfMonth) stats.monthly += amount;
-
-        // Histórico
-        stats.total += amount;
+        if (deliveryDateStr === today) stats.daily += repairBalance;
+        if (deliveryDate >= startOfWeek) stats.weekly += repairBalance;
+        if (deliveryDate >= startOfMonth) stats.monthly += repairBalance;
+        stats.total += repairBalance;
       }
     });
 
@@ -110,7 +119,7 @@ export default function FinancialReportsView({ orders }) {
                     <td className="py-3 px-2 text-slate-400">{o.entryDate}</td>
                     <td className="py-3 px-2 font-bold text-slate-300">{o.clientName}</td>
                     <td className="py-3 px-2 text-right font-mono font-black text-emerald-400">
-                      ${(parseFloat(o.grandTotal || o.cost || 0)).toLocaleString('es-AR')}
+                      ${(parseFloat(o.estimatedBudget || o.budgetDetails?.grandTotal || 0)).toLocaleString('es-AR')}
                     </td>
                   </tr>
                 ))}

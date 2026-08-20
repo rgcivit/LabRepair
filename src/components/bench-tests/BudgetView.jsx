@@ -196,7 +196,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const handleSaveBudget = () => {
     const updatedWorkOrder = {
       ...selectedOT,
-      cost: grandTotal, // Sincroniza costo general
+      estimatedBudget: grandTotal, // Persistir total neto en columna oficial
       laborCost: parseFloat(laborCost) || 0,
       spareParts: imputedParts,
       budgetStatus: budgetStatus,
