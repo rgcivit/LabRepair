@@ -11,7 +11,8 @@ import {
   Settings2,
   Plus,
   Menu,
-  X
+  X,
+  TrendingUp
 } from "lucide-react";
 import { supabase } from './services/supabaseClient';
 import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient } from './services/storageService';
@@ -23,6 +24,7 @@ import InventoryView from './components/inventory/InventoryView';
 import ClientsView from './components/clients/ClientsView';
 import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
+import FinancialReportsView from './components/reports/FinancialReportsView';
 import { generateQCCertificate, exportWorkOrdersToPDF, generateEntryReceipt } from './services/pdfService';
 import { generateSecuritySeal } from './services/sealService';
 
@@ -603,6 +605,20 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => { setActiveTab('reports'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'reports'
+                ? 'bg-slate-900 text-cyan-400 font-semibold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <TrendingUp size={18} />
+              <span>Reportes de Ganancias</span>
+            </div>
+          </button>
+
+          <button
             onClick={() => { setActiveTab('maintenance'); setIsSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'maintenance'
@@ -982,6 +998,12 @@ export default function App() {
           {activeTab === 'history' && (
             <SerialHistoryView 
               workOrders={orders}
+            />
+          )}
+
+          {activeTab === 'reports' && (
+            <FinancialReportsView
+              orders={orders}
             />
           )}
 
