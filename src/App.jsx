@@ -471,18 +471,31 @@ export default function App() {
               placeholder="Buscar OT, cliente, serie o marca..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-12 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
             />
-            {filterQuery && (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
               <button 
-                onClick={() => setFilterQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300"
+                onClick={() => {
+                  const id = prompt("Ingrese o escanee el código de la OT:");
+                  if (id) setFilterQuery(id);
+                }}
+                className="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors"
+                title="Escanear QR / OT"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.875 15.75a1.125 1.125 0 100-2.25 1.125 1.125 0 000 2.25zM16.875 19.5a1.125 1.125 0 100-2.25 1.125 1.125 0 000 2.25zM13.5 15a.375.375 0 11-.75 0 .375.375 0 01.75 0zM13.5 18.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zM18.75 15a.375.375 0 11-.75 0 .375.375 0 01.75 0zM18.75 18.75a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                 </svg>
               </button>
-            )}
+              {filterQuery && (
+                <button
+                  onClick={() => setFilterQuery('')}
+                  className="p-1 text-slate-500 hover:text-slate-300"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           </div>
           <button
             onClick={handleOpenNewOrder}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 /**
  * Componente especializado BenchTestView para la mesa de mediciones de laboratorio.
@@ -23,8 +23,24 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
     shotCounter: '',
     hoursOfUse: '',
     qcPassed: false,
-    rootCauseReport: ''
+    rootCauseReport: '',
+    internalNotes: '',
+    checklist: {}
   });
+
+  // Checklist dinámico según tipo de equipo
+  const getChecklistTemplate = (type) => {
+    const common = ["Prueba de seguridad eléctrica", "Limpieza de chasis", "Ajuste de tornillería"];
+    const templates = {
+      "Criolipólisis": ["Verificación de vacío (bar)", "Prueba de celdas Peltier", "Nivel de líquido refrigerante", "Filtro de agua"],
+      "Láser Diodo": ["Potencia de emisión (J)", "Temperatura de zafiro", "Flujo de agua", "Disparos de prueba"],
+      "Radiofrecuencia": ["Prueba de impedancia", "Temperatura de contacto", "Integridad del cabezal"],
+      "VelaShape": ["Presión de succión", "Rodillos mecánicos", "Infrarrojo OK"]
+    };
+    return [...(templates[type] || []), ...common];
+  };
+
+  const checklistItems = useMemo(() => getChecklistTemplate(selectedOT?.deviceType), [selectedOT?.deviceType]);
 
   // Al seleccionar una orden, cargamos sus mediciones preexistentes o establecemos valores base
   useEffect(() => {
@@ -39,7 +55,9 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
         shotCounter: selectedOT.benchTest?.shotCounter || '',
         hoursOfUse: selectedOT.benchTest?.hoursOfUse || '',
         qcPassed: selectedOT.qcPassed || false,
-        rootCauseReport: selectedOT.diagnosis || ''
+        rootCauseReport: selectedOT.diagnosis || '',
+        internalNotes: selectedOT.internalNotes || '',
+        checklist: selectedOT.benchTest?.checklist || {}
       });
     }
   }, [selectedOT]);
@@ -75,6 +93,7 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
     const updatedWorkOrder = {
       ...selectedOT,
       diagnosis: testForm.rootCauseReport.trim(),
+      internalNotes: testForm.internalNotes.trim(),
       qcPassed: testForm.qcPassed,
       // Actualizamos automáticamente el estado a 'EN_PRUEBAS' o 'LISTO' según control de calidad
       status: testForm.qcPassed ? 'LISTO' : (selectedOT.status === 'INGRESO' ? 'EN_DIAGNOSTICO' : selectedOT.status),
@@ -86,7 +105,8 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
         voltageHV: testForm.voltageHV,
         frequency: testForm.frequency,
         shotCounter: testForm.shotCounter,
-        hoursOfUse: testForm.hoursOfUse
+        hoursOfUse: testForm.hoursOfUse,
+        checklist: testForm.checklist
       }
     };
 
@@ -301,21 +321,110 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
 
         <hr className="border-slate-800" />
 
-        {/* Diagnóstico técnico y causa raíz de la falla */}
-        <div>
+        {/* CHECKLIST DE CONTROL DE CALIDAD */}
+        <div className="space-y-4">
           <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
-            Informe de Diagnóstico y Causa Raíz de la Falla
+            Checklist de Control de Calidad (QC)
           </label>
-          <p className="text-[10px] text-slate-500 mb-2">Describa la procedencia electrónica o hidráulica de la avería para el informe de ingeniería:</p>
-          <textarea
-            name="rootCauseReport"
-            rows="3"
-            required
-            value={testForm.rootCauseReport}
-            onChange={handleChange}
-            placeholder="Ej: El cabezal presentaba micro-fuga de agua por resecado del o-ring perimetral. Dicha filtración sulfató los bornes de las celdas Peltier secundarias provocando el bloqueo del controlador térmico por sobrecorriente..."
-            className="w-full bg-slate-950 border border-slate-850 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder-slate-700 font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {checklistItems.map((item, idx) => (
+              <label
+                key={idx}
+                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                  testForm.checklist[item]
+                    ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400'
+                    : 'bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-700'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!testForm.checklist[item]}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setTestForm(prev => ({
+                      ...prev,
+                      checklist: { ...prev.checklist, [item]: checked }
+                    }));
+                  }}
+                  className="w-4 h-4 accent-emerald-500"
+                />
+                <span className="text-xs font-bold">{item}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <hr className="border-slate-800" />
+
+        {/* Diagnóstico técnico y causa raíz de la falla */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              Informe para el Cliente (PDF)
+            </label>
+            <p className="text-[10px] text-slate-500 mb-2 italic">Este texto aparecerá en el presupuesto oficial enviado al cliente.</p>
+            <textarea
+              name="rootCauseReport"
+              rows="4"
+              required
+              value={testForm.rootCauseReport}
+              onChange={handleChange}
+              placeholder="Ej: El cabezal presentaba micro-fuga de agua..."
+              className="w-full bg-slate-950 border border-slate-850 rounded-lg px-4 py-3 text-xs text-slate-200 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
+              Bitácora Técnica (Privada)
+            </label>
+            <p className="text-[10px] text-slate-500 mb-2 italic">Notas internas solo para técnicos. No sale en el PDF.</p>
+            <textarea
+              name="internalNotes"
+              rows="4"
+              value={testForm.internalNotes}
+              onChange={handleChange}
+              placeholder="Ej: Pin 5 de la placa lógica oscilando a 12V inestables. Se cambió integrado U3..."
+              className="w-full bg-slate-950 border border-slate-850 rounded-lg px-4 py-3 text-xs text-cyan-200 font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all"
+            />
+          </div>
+        </div>
+
+        <hr className="border-slate-800" />
+
+        {/* CHECKLIST DE CONTROL DE CALIDAD */}
+        <div className="space-y-4">
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
+            Checklist de Control de Calidad (QC)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {checklistItems.map((item, idx) => (
+              <label
+                key={idx}
+                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                  testForm.checklist[item]
+                    ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400'
+                    : 'bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-700'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!testForm.checklist[item]}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setTestForm(prev => ({
+                      ...prev,
+                      checklist: { ...prev.checklist, [item]: checked }
+                    }));
+                  }}
+                  className="w-4 h-4 accent-emerald-500"
+                />
+                <span className="text-xs font-bold">{item}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <hr className="border-slate-800" />

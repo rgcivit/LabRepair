@@ -43,44 +43,53 @@ export const generateSecuritySeal = async (order) => {
       // Ubicación centrada en la base de la faja (donde borraste el número largo)
       ctx.fillText(orderId, canvas.width * 0.5, canvas.height * 0.94);
 
-      // --- EXPORTACIÓN Y COMPARTICIÓN ---
-      const base64Image = canvas.toDataURL('image/png');
-      const filename = `Faja_${orderId}.png`;
+      // --- 3. GENERACIÓN DE CÓDIGO QR ---
+      const statusUrl = `https://lab-repair-iota.vercel.app/status/${orderId}`;
+      const qrImg = new Image();
+      qrImg.crossOrigin = "anonymous";
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(statusUrl)}`;
 
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const base64Data = base64Image.split(',')[1];
-          await Filesystem.writeFile({
-            path: filename,
-            data: base64Data,
-            directory: Directory.Cache
-          });
+      qrImg.onload = async () => {
+        // Dibujamos el QR en una esquina o lugar estratégico de la faja
+        // Basado en tu plantilla, lo pondremos en el lado derecho para no tapar el texto central
+        ctx.drawImage(qrImg, canvas.width * 0.78, canvas.height * 0.1, 100, 100);
 
-          const fileUri = await Filesystem.getUri({
-            directory: Directory.Cache,
-            path: filename
-          });
+        // --- EXPORTACIÓN Y COMPARTICIÓN ---
+        const base64Image = canvas.toDataURL('image/png');
+        const filename = `Faja_${orderId}.png`;
 
-          // Compartir con "Fun Print" u otras apps
-          await Share.share({
-            title: 'Faja de Garantía LabRepair',
-            text: 'Impresión de faja de seguridad.',
-            url: fileUri.uri,
-            dialogTitle: 'Enviar a Fun Print'
-          });
+        if (Capacitor.isNativePlatform()) {
+          try {
+            const base64Data = base64Image.split(',')[1];
+            await Filesystem.writeFile({
+              path: filename,
+              data: base64Data,
+              directory: Directory.Cache
+            });
+
+            const fileUri = await Filesystem.getUri({
+              directory: Directory.Cache,
+              path: filename
+            });
+
+            await Share.share({
+              title: 'Faja de Garantía LabRepair',
+              text: 'Impresión de faja de seguridad.',
+              url: fileUri.uri,
+              dialogTitle: 'Enviar a Fun Print'
+            });
+            resolve(true);
+          } catch (error) {
+            reject(error);
+          }
+        } else {
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = base64Image;
+          link.click();
           resolve(true);
-        } catch (error) {
-          console.error('Error compartiendo faja:', error);
-          reject(error);
         }
-      } else {
-        // Navegador: Descarga directa
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = base64Image;
-        link.click();
-        resolve(true);
-      }
+      };
     };
 
     img.onerror = (err) => {
