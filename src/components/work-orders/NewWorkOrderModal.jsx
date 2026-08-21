@@ -32,7 +32,7 @@ const STATUSES = [
   { id: "LISTO", label: "Listo" },
   { id: "ENTREGADO", label: "Entregado" }
 ];
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 7;
 
 const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = [], onSaveClient }) => {
   const [formData, setFormData] = React.useState({

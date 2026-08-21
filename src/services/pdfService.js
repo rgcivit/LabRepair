@@ -168,10 +168,10 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
   doc.text(splitAcc, 15, currentY + 8);
   currentY += 10 + (splitAcc.length * 4.5);
 
-  // 6. Fotos de Inspección (Si existen)
+  // 6. Fotos de Inspección (Soporte para más imágenes)
   const orderImages = Array.isArray(order.images) ? order.images : [];
   if (orderImages.length > 0) {
-      if (currentY > 180) { doc.addPage(); currentY = 20; }
+      if (currentY > 190) { doc.addPage(); currentY = 20; }
       doc.setFont("helvetica", "bold"); doc.text("5. EVIDENCIA FOTOGRÁFICA (INSPECCIÓN VISUAL):", 15, currentY);
       doc.line(15, currentY + 2, 195, currentY + 2);
       
@@ -180,12 +180,26 @@ export const generateEntryReceipt = async (order, clientSignatureBase64, appLogo
 
       orderImages.forEach((img, idx) => {
           try {
+            // Verificar si la fila de fotos cabe en la página
+            if (photoY + 40 > 285) {
+                doc.addPage();
+                photoY = 20;
+                photoX = 15;
+            }
+
             doc.addImage(img, 'JPEG', photoX, photoY, 38, 38, undefined, 'FAST');
             photoX += 43;
-            if ((idx + 1) % 4 === 0) { photoX = 15; photoY += 42; }
+
+            // Salto de fila cada 4 fotos
+            if ((idx + 1) % 4 === 0) {
+              photoX = 15;
+              photoY += 42;
+            }
           } catch(e) { console.warn("Error cargando imagen en PDF:", e); }
       });
-      currentY = photoY + 44;
+
+      // Ajustar currentY basándose en la última posición de photoY
+      currentY = photoY + (photoX === 15 ? 5 : 44);
   }
 
   // 6. Términos y Condiciones
