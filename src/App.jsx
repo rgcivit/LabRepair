@@ -25,6 +25,7 @@ import ClientsView from './components/clients/ClientsView';
 import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
 import FinancialReportsView from './components/reports/FinancialReportsView';
+import QRScannerModal from './components/scanner/QRScannerModal';
 import { generateQCCertificate, exportWorkOrdersToPDF, generateEntryReceipt } from './services/pdfService';
 import { generateSecuritySeal } from './services/sealService';
 
@@ -67,6 +68,9 @@ export default function App() {
 
   // Control del menú hamburguesa (móvil)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Control del Scanner QR
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Estados para Pull-to-Refresh (Móvil)
   const [startY, setStartY] = useState(0);
@@ -475,10 +479,7 @@ export default function App() {
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-2 gap-1">
               <button 
-                onClick={() => {
-                  const id = prompt("Ingrese o escanee el código de la OT:");
-                  if (id) setFilterQuery(id);
-                }}
+                onClick={() => setIsScannerOpen(true)}
                 className="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors"
                 title="Escanear QR / OT"
               >
@@ -1117,6 +1118,13 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* MODAL SCANNER QR */}
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={(val) => setFilterQuery(val)}
+      />
 
     </div>
   );
