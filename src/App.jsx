@@ -26,6 +26,7 @@ import SerialHistoryView from './components/history/SerialHistoryView';
 import SettingsView from './components/settings/SettingsView';
 import FinancialReportsView from './components/reports/FinancialReportsView';
 import QRScannerModal from './components/scanner/QRScannerModal';
+import PublicStatusView from './components/public/PublicStatusView';
 import { generateQCCertificate, exportWorkOrdersToPDF, generateEntryReceipt } from './services/pdfService';
 import { generateSecuritySeal } from './services/sealService';
 
@@ -369,6 +370,15 @@ export default function App() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // --- RUTEO PÚBLICO (CÓDIGOS QR) ---
+  const publicOrderId = window.location.pathname.startsWith('/status/')
+    ? window.location.pathname.split('/status/')[1]
+    : null;
+
+  if (publicOrderId) {
+    return <PublicStatusView orderId={publicOrderId} />;
+  }
 
   if (!currentUser) {
     return <LoginView onLoginSuccess={setCurrentUser} />;
