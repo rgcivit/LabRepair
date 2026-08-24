@@ -234,7 +234,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
       ...selectedOT,
       laborCost,
       sparePartsAssigned: imputedParts,
-      diagnosis: selectedOT.diagnosis,
+      diagnosis: diagnosisText.trim() || selectedOT.diagnosis, // PRIORIDAD A LO QUE ESTÁ EN PANTALLA
       budgetDetails: {
         currency,
         ivaRate,
