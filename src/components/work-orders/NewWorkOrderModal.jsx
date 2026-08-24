@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Wrench, User, Phone, Plus, Camera, Trash2, FileCheck } from "lucide-react";
 import { saveWorkOrder } from "../../services/storageService";
+import { compressImage } from "../../services/imageUtils";
 import { generateEntryReceipt } from "../../services/pdfService";
 import SignatureModal from "../common/SignatureModal";
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -108,16 +109,20 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
     });
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     const currentImages = Array.isArray(images) ? images : [];
     const available = MAX_IMAGES - currentImages.length;
 
-    files.slice(0, available).forEach(file => {
+    const toProcess = files.slice(0, available);
+    for (const file of toProcess) {
       const reader = new FileReader();
-      reader.onloadend = () => setImages(prev => [...(Array.isArray(prev) ? prev : []), reader.result]);
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result, 1024, 0.7);
+        setImages(prev => [...(Array.isArray(prev) ? prev : []), compressed]);
+      };
       reader.readAsDataURL(file);
-    });
+    }
     e.target.value = ""; // Reset input
   };
 
@@ -134,7 +139,8 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
           source: CameraSource.Prompt
         });
         const imageUrl = `data:image/jpeg;base64,${image.base64String}`;
-        setImages(prev => [...(Array.isArray(prev) ? prev : []), imageUrl]);
+        const compressed = await compressImage(imageUrl, 1024, 0.7);
+        setImages(prev => [...(Array.isArray(prev) ? prev : []), compressed]);
       } catch (err) {
         console.error("Error al capturar foto:", err);
       }

@@ -15,7 +15,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import { supabase } from './services/supabaseClient';
-import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient, mapToCamelCase } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
@@ -105,14 +105,55 @@ export default function App() {
     // Suscripción en tiempo real a Supabase
     const ordersSubscription = supabase
       .channel('work_orders_realtime')
-      .on('postgres_changes', { event: '*', table: 'work_orders', schema: 'public' }, () => {
-        console.log("Cambio detectado en la nube, refrescando...");
-        refreshData();
+      .on('postgres_changes', { event: 'INSERT', table: 'work_orders', schema: 'public' }, (payload) => {
+        const newOrder = mapToCamelCase(payload.new);
+        setOrders(prev => [newOrder, ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', table: 'work_orders', schema: 'public' }, (payload) => {
+        const updatedOrder = mapToCamelCase(payload.new);
+        setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+        setSelectedOrder(current => current?.id === updatedOrder.id ? updatedOrder : current);
+      })
+      .on('postgres_changes', { event: 'DELETE', table: 'work_orders', schema: 'public' }, (payload) => {
+        setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        setSelectedOrder(current => current?.id === payload.old.id ? null : current);
+      })
+      .subscribe();
+
+    const inventorySubscription = supabase
+      .channel('inventory_realtime')
+      .on('postgres_changes', { event: 'INSERT', table: 'inventory', schema: 'public' }, (payload) => {
+        const newItem = mapToCamelCase(payload.new);
+        setInventory(prev => [newItem, ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', table: 'inventory', schema: 'public' }, (payload) => {
+        const updatedItem = mapToCamelCase(payload.new);
+        setInventory(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+      })
+      .on('postgres_changes', { event: 'DELETE', table: 'inventory', schema: 'public' }, (payload) => {
+        setInventory(prev => prev.filter(i => i.id !== payload.old.id));
+      })
+      .subscribe();
+
+    const clientsSubscription = supabase
+      .channel('clients_realtime')
+      .on('postgres_changes', { event: 'INSERT', table: 'clients', schema: 'public' }, (payload) => {
+        const newClient = mapToCamelCase(payload.new);
+        setClients(prev => [newClient, ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', table: 'clients', schema: 'public' }, (payload) => {
+        const updatedClient = mapToCamelCase(payload.new);
+        setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+      })
+      .on('postgres_changes', { event: 'DELETE', table: 'clients', schema: 'public' }, (payload) => {
+        setClients(prev => prev.filter(c => c.id !== payload.old.id));
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(ordersSubscription);
+      supabase.removeChannel(inventorySubscription);
+      supabase.removeChannel(clientsSubscription);
     };
   }, []);
 

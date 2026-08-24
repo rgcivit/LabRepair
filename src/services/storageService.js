@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { compressImage } from './imageUtils';
 
 const WORK_ORDERS_KEY = "labrepair_work_orders";
 const INVENTORY_KEY = "labrepair_inventory";
@@ -63,7 +64,7 @@ const mapToSnakeCase = (obj, table = 'work_orders') => {
   return snake;
 };
 
-const mapToCamelCase = (obj) => {
+export const mapToCamelCase = (obj) => {
   const camel = {};
   for (const key in obj) {
     const camelKey = key.replace(/([-_][a-z])/g, group => group.toUpperCase().replace('-', '').replace('_', ''));
@@ -167,15 +168,21 @@ export const saveWorkOrder = async (workOrder) => {
   // 2. Intento de subida a Storage si hay Base64
   try {
     if (processedOrder.clientSignature?.startsWith('data:')) {
-      processedOrder.clientSignature = await uploadFile(processedOrder.clientSignature, `signatures/${orderId}_client.png`);
+      const compressed = await compressImage(processedOrder.clientSignature, 400, 0.6); // Firmas más pequeñas
+      processedOrder.clientSignature = await uploadFile(compressed, `signatures/${orderId}_client.png`);
     }
     if (processedOrder.techSignature?.startsWith('data:')) {
-      processedOrder.techSignature = await uploadFile(processedOrder.techSignature, `signatures/${orderId}_tech.png`);
+      const compressed = await compressImage(processedOrder.techSignature, 400, 0.6);
+      processedOrder.techSignature = await uploadFile(compressed, `signatures/${orderId}_tech.png`);
     }
     if (Array.isArray(processedOrder.images)) {
-      const uploadPromises = processedOrder.images.map((img, idx) =>
-        img.startsWith('data:') ? uploadFile(img, `photos/${orderId}_${idx}.jpg`) : Promise.resolve(img)
-      );
+      const uploadPromises = processedOrder.images.map(async (img, idx) => {
+        if (img.startsWith('data:')) {
+          const compressed = await compressImage(img, 1024, 0.7); // Fotos a 1024px
+          return await uploadFile(compressed, `photos/${orderId}_${idx}.jpg`);
+        }
+        return img;
+      });
       processedOrder.images = await Promise.all(uploadPromises);
     }
   } catch (e) { console.warn("Error en subida de archivos:", e); }
