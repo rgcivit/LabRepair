@@ -128,34 +128,24 @@ export const uploadFile = async (base64, path) => {
 
 export const getWorkOrders = async () => {
   try {
-    const localStr = localStorage.getItem(WORK_ORDERS_KEY);
-    const localOrders = localStr ? JSON.parse(localStr) : [];
-
     const { data, error } = await supabase
       .from('work_orders')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn("Fallo lectura de nube, usando LocalStorage.");
-      return localOrders;
+      console.warn("Fallo lectura de nube, usando respaldo de memoria local.");
+      const localData = localStorage.getItem(WORK_ORDERS_KEY);
+      return localData ? JSON.parse(localData) : [];
     }
 
     const cloudOrders = data.map(mapToCamelCase);
 
-    // Mezcla inteligente: Priorizar el registro local si existe (para evitar latencia de nube)
-    const ordersMap = new Map();
-
-    // Cargamos lo de la nube
-    cloudOrders.forEach(o => ordersMap.set(o.id, o));
-
-    // Los locales sobrescriben si son cambios recientes no sincronizados
-    localOrders.forEach(o => ordersMap.set(o.id, o));
-
-    const finalOrders = Array.from(ordersMap.values()).sort((a,b) => b.id.localeCompare(a.id));
-    safeSaveLocal(WORK_ORDERS_KEY, finalOrders);
-    return finalOrders;
+    // LA NUBE ES LA VERDAD: Actualizamos el LocalStorage con lo que hay en internet
+    safeSaveLocal(WORK_ORDERS_KEY, cloudOrders);
+    return cloudOrders;
   } catch (error) {
+    console.error("Error crítico de acceso a datos:", error);
     const localData = localStorage.getItem(WORK_ORDERS_KEY);
     return localData ? JSON.parse(localData) : [];
   }
