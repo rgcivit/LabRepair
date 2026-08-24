@@ -17,6 +17,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const [laborCost, setLaborCost] = useState('0');
   const [imputedParts, setImputedParts] = useState([]);
   const [budgetStatus, setBudgetStatus] = useState('PENDIENTE');
+  const [diagnosisText, setDiagnosisText] = useState('');
 
   // 1. Selector de repuesto actual
   const [selectedPartId, setSelectedPartId] = useState('');
@@ -51,6 +52,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
       setLaborCost((selectedOT.laborCost || 0).toString());
       setImputedParts(selectedOT.spareParts || selectedOT.sparePartsAssigned || []);
       setBudgetStatus(selectedOT.budgetStatus || 'PENDIENTE');
+      setDiagnosisText(selectedOT.diagnosis || '');
 
       const details = selectedOT.budgetDetails || {};
       setCurrency(details.currency || 'ARS');
@@ -196,6 +198,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
   const handleSaveBudget = () => {
     const updatedWorkOrder = {
       ...selectedOT,
+      diagnosis: diagnosisText.trim(), // Actualizar diagnóstico desde aquí también
       estimatedBudget: grandTotal, // Persistir total neto en columna oficial
       laborCost: parseFloat(laborCost) || 0,
       spareParts: imputedParts,
@@ -492,6 +495,23 @@ Por favor, responda *APROBADO* para iniciar.`;
                 className="w-full bg-slate-900 border border-slate-800 rounded pl-8 pr-3 py-2 text-xs font-bold text-slate-200 font-mono focus:outline-none"
               />
             </div>
+          </div>
+
+          <hr className="border-slate-900" />
+
+          {/* NUEVO: EDITAR DIAGNÓSTICO DESDE PRESUPUESTO */}
+          <div className="pt-2">
+            <label className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
+              Diagnóstico para el Cliente (PDF)
+            </label>
+            <textarea
+              value={diagnosisText}
+              onChange={(e) => setDiagnosisText(e.target.value)}
+              placeholder="Describa el diagnóstico técnico que aparecerá en el presupuesto oficial..."
+              rows={4}
+              className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-2 text-[11px] text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-sans leading-relaxed"
+            />
           </div>
         </div>
 

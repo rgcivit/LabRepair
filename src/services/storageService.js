@@ -226,37 +226,28 @@ export const getInventory = async () => {
 };
 
 export const saveInventoryItem = async (item) => {
-  const itemId = item.id || `INS-${Math.floor(1000 + Math.random() * 9000)}`;
-  const cleanItem = { ...item, id: itemId };
-
-  // 1. ACTUALIZACIÓN LOCAL INMEDIATA (Respaldo en celular)
-  const localData = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
-  const index = localData.findIndex(i => i.id === itemId);
-  let updatedLocal;
-  if (index >= 0) {
-    updatedLocal = localData.map(i => i.id === itemId ? cleanItem : i);
-  } else {
-    updatedLocal = [cleanItem, ...localData];
-  }
-  safeSaveLocal(INVENTORY_KEY, updatedLocal);
-
-  // 2. INTENTO DE GUARDADO EN NUBE (Supabase)
   try {
+    const itemId = item.id || `INS-${Math.floor(1000 + Math.random() * 9000)}`;
+    const cleanItem = { ...item, id: itemId };
+
     const snakeItem = mapToSnakeCase(cleanItem, 'inventory');
     const { error } = await supabase.from('inventory').upsert(snakeItem);
 
-    if (error) {
-      if (error.status === 404) {
-        console.warn("Tabla 'inventory' no existe en Supabase. Se mantiene en memoria local.");
-      } else {
-        throw error;
-      }
-    }
-    // Si subió bien, retornamos la lista fresca de la nube para asegurar orden
+    if (error) throw error;
     return await getInventory();
   } catch (error) {
-    console.error("Fallo guardado inventario en nube:", error);
-    return updatedLocal; // Retornar lo local si la nube falla
+    console.error("Fallo guardado inventario en Supabase:", error);
+    const localData = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
+    const itemId = item.id || `INS-${Math.floor(1000 + Math.random() * 9000)}`;
+    const index = localData.findIndex(i => i.id === itemId);
+    let updated;
+    if (index >= 0) {
+        updated = localData.map(i => i.id === itemId ? { ...i, ...item, id: itemId } : i);
+    } else {
+        updated = [{ ...item, id: itemId }, ...localData];
+    }
+    safeSaveLocal(INVENTORY_KEY, updated);
+    return updated;
   }
 };
 
@@ -307,11 +298,28 @@ export const getClients = async () => {
 
 export const saveClient = async (client) => {
   try {
-    const snake = mapToSnakeCase(client, 'clients');
-    await supabase.from('clients').upsert(snake);
+    // Generar un ID si no lo tiene para que upsert funcione como insert/update
+    const clientId = client.id || crypto.randomUUID();
+    const cleanClient = { ...client, id: clientId };
+
+    const snake = mapToSnakeCase(cleanClient, 'clients');
+    const { error } = await supabase.from('clients').upsert(snake);
+
+    if (error) throw error;
     return await getClients();
   } catch (error) {
-    return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
+    console.error("Error al guardar cliente:", error);
+    const localData = JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
+    const clientId = client.id || Date.now().toString();
+    const index = localData.findIndex(c => c.id === clientId);
+    let updated;
+    if (index >= 0) {
+      updated = localData.map(c => c.id === clientId ? { ...c, ...client } : c);
+    } else {
+      updated = [{ ...client, id: clientId }, ...localData];
+    }
+    safeSaveLocal(CLIENTS_KEY, updated);
+    return updated;
   }
 };
 
