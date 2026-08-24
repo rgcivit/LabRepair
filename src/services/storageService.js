@@ -12,7 +12,7 @@ const VALID_WORK_ORDER_COLUMNS = [
   "id", "client_name", "client_phone", "device_type", "brand_model",
   "serial_number", "issue_description", "cosmetic_condition", "estimated_budget", "priority",
   "status", "entry_date", "accessories", "images", "spare_parts",
-  "diagnosis", "labor_cost", "client_signature", "tech_signature",
+  "diagnosis", "diagnosis_text", "labor_cost", "client_signature", "tech_signature",
   "budget_details", "qc_passed", "bench_test", "internal_notes"
 ];
 
@@ -143,10 +143,14 @@ export const getWorkOrders = async () => {
 
     const cloudOrders = data.map(mapToCamelCase);
 
-    // Mezcla inteligente: Unir por ID, prevaleciendo el cambio más reciente
+    // Mezcla inteligente: Priorizar el registro local si existe (para evitar latencia de nube)
     const ordersMap = new Map();
-    localOrders.forEach(o => ordersMap.set(o.id, o));
+
+    // Cargamos lo de la nube
     cloudOrders.forEach(o => ordersMap.set(o.id, o));
+
+    // Los locales sobrescriben si son cambios recientes no sincronizados
+    localOrders.forEach(o => ordersMap.set(o.id, o));
 
     const finalOrders = Array.from(ordersMap.values()).sort((a,b) => b.id.localeCompare(a.id));
     safeSaveLocal(WORK_ORDERS_KEY, finalOrders);

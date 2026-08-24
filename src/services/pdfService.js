@@ -252,7 +252,7 @@ export const generateBudgetPDF = async (order, appLogo) => {
 
   doc.setFont("helvetica", "bold"); doc.text("DIAGNÓSTICO TÉCNICO DE INGENIERÍA:", 15, 50);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  const diag = order.diagnosis || "No se ha registrado un diagnóstico técnico aún.";
+  const diag = order.diagnosis || order.diagnosis_text || "No se ha registrado un diagnóstico técnico aún.";
   const splitDiag = doc.splitTextToSize(diag, 180);
   doc.text(splitDiag, 15, 55);
 

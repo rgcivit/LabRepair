@@ -199,6 +199,7 @@ export default function BudgetView({ selectedOT, inventory, onUpdateBudget, onDi
     const updatedWorkOrder = {
       ...selectedOT,
       diagnosis: diagnosisText.trim(), // Actualizar diagnóstico desde aquí también
+      diagnosis_text: diagnosisText.trim(), // Doble mapeo por seguridad
       estimatedBudget: grandTotal, // Persistir total neto en columna oficial
       laborCost: parseFloat(laborCost) || 0,
       spareParts: imputedParts,
