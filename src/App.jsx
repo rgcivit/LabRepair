@@ -778,10 +778,19 @@ export default function App() {
                             onClick={() => setSelectedOrder(order)}
                             className={`cursor-pointer transition-all ${selectedOrder?.id === order.id ? 'bg-cyan-950/20 border-l-4 border-cyan-500' : 'hover:bg-slate-900/60'}`}
                           >
-                            <td className="py-3 px-4">
+                            <td className="py-3 px-4 relative group">
                               <div className="flex justify-between items-start">
                                 <span className="text-[10px] font-mono font-bold text-cyan-400">{order.id}</span>
-                                <PriorityBadge priority={order.priority} />
+                                <div className="flex items-center gap-2">
+                                  <PriorityBadge priority={order.priority} />
+                                  <button
+                                    onClick={(e) => handleDeleteOrder(order.id, e)}
+                                    className="p-1 text-rose-500 hover:bg-rose-500/20 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                    title="Eliminar Orden Permanentemente"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                               </div>
                               <div className="font-bold text-slate-200 text-sm mt-1 truncate">{order.clientName}</div>
                               <div className="text-[11px] text-slate-500 truncate">{order.equipmentName || order.deviceType}</div>
@@ -812,10 +821,13 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleEditOrder(selectedOrder)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-amber-500">
+                        <button onClick={(e) => handleDeleteOrder(selectedOrder.id, e)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors" title="Eliminar Orden">
+                          <Trash2 size={16} />
+                        </button>
+                        <button onClick={() => handleEditOrder(selectedOrder)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-amber-500" title="Editar Datos Básicos">
                           <Settings2 size={16} />
                         </button>
-                        <button onClick={() => generateEntryReceipt(selectedOrder, selectedOrder.clientSignature, null)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-emerald-500">
+                        <button onClick={() => generateEntryReceipt(selectedOrder, selectedOrder.clientSignature, null)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-emerald-500" title="Imprimir Comprobante">
                           <ClipboardList size={16} />
                         </button>
                       </div>
