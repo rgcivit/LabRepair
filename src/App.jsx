@@ -250,6 +250,13 @@ export default function App() {
 
   // Callback general para guardar/actualizar una OT
   const handleSaveOT = async (updatedOrder) => {
+    // Si el estado cambia a ENTREGADO y no tiene fecha de entrega, la asignamos hoy
+    if (updatedOrder.status === 'ENTREGADO' && !updatedOrder.deliveryDate && !updatedOrder.delivery_date) {
+      const now = new Date().toISOString();
+      updatedOrder.deliveryDate = now;
+      updatedOrder.delivery_date = now;
+    }
+
     const updatedList = await saveWorkOrder(updatedOrder);
     setOrders([...updatedList]); // Forzar nueva referencia de array para React
     if (selectedOrder?.id === updatedOrder.id) {

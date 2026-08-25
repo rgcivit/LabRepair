@@ -32,41 +32,53 @@ export default function FinancialReportsView({ orders }) {
       const diagFee = parseFloat(details.diagnosisCost || 0);
       const isDiagPaid = details.diagnosisFeeMode === 'PAID';
 
-      const orderDate = new Date(order.created_at || order.entryDate);
-      const orderDateStr = orderDate.toISOString().split('T')[0];
+      // Fecha de ingreso (para el abono)
+      const entryDate = new Date(order.created_at || order.entryDate);
+      const entryDateStr = entryDate.toISOString().split('T')[0];
 
-      // 1. PROCESAR ABONOS PAGADOS
+      // 1. PROCESAR ABONOS PAGADOS (Se atribuyen a la fecha de ingreso/cobro de seña)
       if (isDiagPaid) {
-        if (orderDateStr === today) data.daily += diagFee;
-        if (orderDate >= startOfWeek) data.weekly += diagFee;
-        if (orderDate >= startOfMonth) data.monthly += diagFee;
+        const matchesDiag = timeFilter === 'ALL' ||
+                           (timeFilter === 'DAY' && entryDateStr === today) ||
+                           (timeFilter === 'WEEK' && entryDate >= startOfWeek) ||
+                           (timeFilter === 'MONTH' && entryDate >= startOfMonth);
+
+        if (entryDateStr === today) data.daily += diagFee;
+        if (entryDate >= startOfWeek) data.weekly += diagFee;
+        if (entryDate >= startOfMonth) data.monthly += diagFee;
         data.total += diagFee;
+
+        // Si el abono entra en el filtro, lo añadimos a la lista (si no está entregado)
+        if (matchesDiag && order.status !== 'ENTREGADO') {
+           data.filteredList.push({ ...order, _reportType: 'DIAG_ONLY', _reportDate: entryDate });
+        }
       }
 
-      // 2. PROCESAR TRABAJOS ENTREGADOS
+      // 2. PROCESAR TRABAJOS ENTREGADOS (Se atribuyen a la fecha de entrega del saldo)
       if (order.status === 'ENTREGADO') {
+        const deliveryDate = new Date(order.deliveryDate || order.delivery_date || order.created_at || order.entryDate);
+        const deliveryDateStr = deliveryDate.toISOString().split('T')[0];
         const repairBalance = parseFloat(order.estimatedBudget || details.grandTotal || 0);
 
-        if (orderDateStr === today) data.daily += repairBalance;
-        if (orderDate >= startOfWeek) data.weekly += repairBalance;
-        if (orderDate >= startOfMonth) data.monthly += repairBalance;
+        const matchesDelivery = timeFilter === 'ALL' ||
+                               (timeFilter === 'DAY' && deliveryDateStr === today) ||
+                               (timeFilter === 'WEEK' && deliveryDate >= startOfWeek) ||
+                               (timeFilter === 'MONTH' && deliveryDate >= startOfMonth);
+
+        if (deliveryDateStr === today) data.daily += repairBalance;
+        if (deliveryDate >= startOfWeek) data.weekly += repairBalance;
+        if (deliveryDate >= startOfMonth) data.monthly += repairBalance;
         data.total += repairBalance;
-      }
 
-      // 3. APLICAR FILTRO A LA LISTA VISIBLE
-      let matches = false;
-      if (timeFilter === 'ALL') matches = true;
-      else if (timeFilter === 'DAY') matches = orderDateStr === today;
-      else if (timeFilter === 'WEEK') matches = orderDate >= startOfWeek;
-      else if (timeFilter === 'MONTH') matches = orderDate >= startOfMonth;
-
-      if (matches && (order.status === 'ENTREGADO' || isDiagPaid)) {
-        data.filteredList.push(order);
+        // Si la entrega entra en el filtro, añadimos a la lista
+        if (matchesDelivery) {
+           data.filteredList.push({ ...order, _reportType: 'DELIVERY', _reportDate: deliveryDate });
+        }
       }
     });
 
-    // Ordenar por fecha más reciente
-    data.filteredList.sort((a,b) => new Date(b.created_at || b.entryDate) - new Date(a.created_at || a.entryDate));
+    // Ordenar por la fecha que estamos reportando
+    data.filteredList.sort((a,b) => b._reportDate - a._reportDate);
 
     return data;
   }, [orders, timeFilter]);
@@ -156,25 +168,24 @@ export default function FinancialReportsView({ orders }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900">
-              {stats.filteredList.map(o => {
-                const isDiagOnly = o.status !== 'ENTREGADO' && o.budgetDetails?.diagnosisFeeMode === 'PAID';
-                const repairAmt = o.status === 'ENTREGADO' ? parseFloat(o.estimatedBudget || o.budgetDetails?.grandTotal || 0) : 0;
-                const diagAmt = o.budgetDetails?.diagnosisFeeMode === 'PAID' ? parseFloat(o.budgetDetails?.diagnosisCost || 0) : 0;
+              {stats.filteredList.map((o, idx) => {
+                const repairAmt = o._reportType === 'DELIVERY' ? parseFloat(o.estimatedBudget || o.budgetDetails?.grandTotal || 0) : 0;
+                const diagAmt = o._reportType === 'DIAG_ONLY' ? parseFloat(o.budgetDetails?.diagnosisCost || 0) : 0;
                 const totalRow = repairAmt + diagAmt;
 
                 return (
-                  <tr key={o.id} className="hover:bg-slate-900/40 transition-colors group">
+                  <tr key={`${o.id}-${o._reportType}-${idx}`} className="hover:bg-slate-900/40 transition-colors group">
                     <td className="py-3 px-2 font-mono font-bold text-cyan-400">
                       {o.id}
                     </td>
                     <td className="py-3 px-2 text-slate-400 font-mono text-[10px]">
-                      {(o.created_at || o.entryDate).split('T')[0]}
+                      {o._reportDate.toISOString().split('T')[0]}
                     </td>
                     <td className="py-3 px-2">
                       <div className="font-bold text-slate-300">{o.clientName}</div>
                       <div className="text-[9px] text-slate-500 uppercase flex gap-2">
-                        {diagAmt > 0 && <span className="text-cyan-600">Abono Revisión</span>}
-                        {repairAmt > 0 && <span className="text-emerald-600">Trabajo Finalizado</span>}
+                        {o._reportType === 'DIAG_ONLY' && <span className="text-cyan-600 font-bold">Abono Revisión / Seña</span>}
+                        {o._reportType === 'DELIVERY' && <span className="text-emerald-600 font-bold">Saldo de Reparación (Entrega)</span>}
                       </div>
                     </td>
                     <td className="py-3 px-2 text-right font-mono font-black text-emerald-400">

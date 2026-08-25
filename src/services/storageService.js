@@ -12,7 +12,7 @@ const SETTINGS_LOCAL_KEY = 'estetica_lab_settings';
 const VALID_WORK_ORDER_COLUMNS = [
   "id", "client_name", "client_phone", "device_type", "brand_model",
   "serial_number", "issue_description", "cosmetic_condition", "estimated_budget", "priority",
-  "status", "entry_date", "accessories", "images", "spare_parts",
+  "status", "entry_date", "delivery_date", "accessories", "images", "spare_parts",
   "diagnosis", "labor_cost", "client_signature", "tech_signature",
   "budget_details", "budget_status", "qc_passed", "bench_test", "internal_notes"
 ];
