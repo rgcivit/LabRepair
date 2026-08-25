@@ -12,7 +12,8 @@ import {
   Plus,
   Menu,
   X,
-  TrendingUp
+  TrendingUp,
+  Trash2
 } from "lucide-react";
 import { supabase } from './services/supabaseClient';
 import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient, mapToCamelCase } from './services/storageService';
@@ -461,6 +462,7 @@ export default function App() {
     );
   }
 
+  // Si después de 8 segundos sigue cargando, forzar el login por seguridad
   if (!currentUser) {
     return <LoginView onLoginSuccess={setCurrentUser} />;
   }
