@@ -36,8 +36,8 @@ export default function FinancialReportsView({ orders }) {
       const entryDate = new Date(order.created_at || order.entryDate);
       const entryDateStr = entryDate.toISOString().split('T')[0];
 
-      // 1. PROCESAR ABONOS PAGADOS (Se atribuyen a la fecha de ingreso/cobro de seña)
-      if (isDiagPaid) {
+      // 1. PROCESAR ABONOS PAGADOS (Ganancia por seña/revisión)
+      if (isDiagPaid && diagFee > 0) {
         const matchesDiag = timeFilter === 'ALL' ||
                            (timeFilter === 'DAY' && entryDateStr === today) ||
                            (timeFilter === 'WEEK' && entryDate >= startOfWeek) ||
@@ -48,31 +48,34 @@ export default function FinancialReportsView({ orders }) {
         if (entryDate >= startOfMonth) data.monthly += diagFee;
         data.total += diagFee;
 
-        // Si el abono entra en el filtro, lo añadimos a la lista (si no está entregado)
-        if (matchesDiag && order.status !== 'ENTREGADO') {
-           data.filteredList.push({ ...order, _reportType: 'DIAG_ONLY', _reportDate: entryDate });
+        if (matchesDiag) {
+           data.filteredList.push({ ...order, _reportType: 'DIAG_ONLY', _reportDate: entryDate, _reportAmount: diagFee });
         }
       }
 
-      // 2. PROCESAR TRABAJOS ENTREGADOS (Se atribuyen a la fecha de entrega del saldo)
+      // 2. PROCESAR TRABAJOS ENTREGADOS (Ganancia por el saldo restante)
       if (order.status === 'ENTREGADO') {
         const deliveryDate = new Date(order.deliveryDate || order.delivery_date || order.created_at || order.entryDate);
         const deliveryDateStr = deliveryDate.toISOString().split('T')[0];
-        const repairBalance = parseFloat(order.estimatedBudget || details.grandTotal || 0);
+
+        // El saldo de reparación es el dinero extra que entra al entregar.
+        // Si el presupuesto dice negativo o cero, significa que ya se cubrió con la seña.
+        const repairBalance = Math.max(0, parseFloat(order.estimatedBudget || details.grandTotal || 0));
 
         const matchesDelivery = timeFilter === 'ALL' ||
                                (timeFilter === 'DAY' && deliveryDateStr === today) ||
                                (timeFilter === 'WEEK' && deliveryDate >= startOfWeek) ||
                                (timeFilter === 'MONTH' && deliveryDate >= startOfMonth);
 
-        if (deliveryDateStr === today) data.daily += repairBalance;
-        if (deliveryDate >= startOfWeek) data.weekly += repairBalance;
-        if (deliveryDate >= startOfMonth) data.monthly += repairBalance;
-        data.total += repairBalance;
+        if (repairBalance > 0) {
+          if (deliveryDateStr === today) data.daily += repairBalance;
+          if (deliveryDate >= startOfWeek) data.weekly += repairBalance;
+          if (deliveryDate >= startOfMonth) data.monthly += repairBalance;
+          data.total += repairBalance;
 
-        // Si la entrega entra en el filtro, añadimos a la lista
-        if (matchesDelivery) {
-           data.filteredList.push({ ...order, _reportType: 'DELIVERY', _reportDate: deliveryDate });
+          if (matchesDelivery) {
+            data.filteredList.push({ ...order, _reportType: 'DELIVERY', _reportDate: deliveryDate, _reportAmount: repairBalance });
+          }
         }
       }
     });
@@ -168,32 +171,26 @@ export default function FinancialReportsView({ orders }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900">
-              {stats.filteredList.map((o, idx) => {
-                const repairAmt = o._reportType === 'DELIVERY' ? parseFloat(o.estimatedBudget || o.budgetDetails?.grandTotal || 0) : 0;
-                const diagAmt = o._reportType === 'DIAG_ONLY' ? parseFloat(o.budgetDetails?.diagnosisCost || 0) : 0;
-                const totalRow = repairAmt + diagAmt;
-
-                return (
-                  <tr key={`${o.id}-${o._reportType}-${idx}`} className="hover:bg-slate-900/40 transition-colors group">
-                    <td className="py-3 px-2 font-mono font-bold text-cyan-400">
-                      {o.id}
-                    </td>
-                    <td className="py-3 px-2 text-slate-400 font-mono text-[10px]">
-                      {o._reportDate.toISOString().split('T')[0]}
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="font-bold text-slate-300">{o.clientName}</div>
-                      <div className="text-[9px] text-slate-500 uppercase flex gap-2">
-                        {o._reportType === 'DIAG_ONLY' && <span className="text-cyan-600 font-bold">Abono Revisión / Seña</span>}
-                        {o._reportType === 'DELIVERY' && <span className="text-emerald-600 font-bold">Saldo de Reparación (Entrega)</span>}
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono font-black text-emerald-400">
-                      ${totalRow.toLocaleString('es-AR')}
-                    </td>
-                  </tr>
-                );
-              })}
+              {stats.filteredList.map((o, idx) => (
+                <tr key={`${o.id}-${o._reportType}-${idx}`} className="hover:bg-slate-900/40 transition-colors group">
+                  <td className="py-3 px-2 font-mono font-bold text-cyan-400">
+                    {o.id}
+                  </td>
+                  <td className="py-3 px-2 text-slate-400 font-mono text-[10px]">
+                    {o._reportDate.toISOString().split('T')[0]}
+                  </td>
+                  <td className="py-3 px-2">
+                    <div className="font-bold text-slate-300">{o.clientName}</div>
+                    <div className="text-[9px] text-slate-500 uppercase flex gap-2">
+                      {o._reportType === 'DIAG_ONLY' && <span className="text-cyan-600 font-bold">Abono Revisión / Seña</span>}
+                      {o._reportType === 'DELIVERY' && <span className="text-emerald-600 font-bold">Saldo de Reparación (Entrega)</span>}
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-right font-mono font-black text-emerald-400">
+                    ${o._reportAmount.toLocaleString('es-AR')}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
           {stats.filteredList.length === 0 && (
