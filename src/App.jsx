@@ -1098,7 +1098,13 @@ export default function App() {
       <NewWorkOrderModal 
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
-        onSave={refreshData}
+        onSave={(updatedList) => {
+          setOrders([...updatedList]);
+          if (editingOrder) {
+            const fresh = updatedList.find(o => o.id === editingOrder.id);
+            if (fresh) setSelectedOrder(fresh);
+          }
+        }}
         editingOrder={editingOrder}
         clients={clients}
         onSaveClient={handleSaveClient}
