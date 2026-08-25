@@ -13,8 +13,8 @@ const VALID_WORK_ORDER_COLUMNS = [
   "id", "client_name", "client_phone", "device_type", "brand_model",
   "serial_number", "issue_description", "cosmetic_condition", "estimated_budget", "priority",
   "status", "entry_date", "accessories", "images", "spare_parts",
-  "diagnosis", "diagnosis_text", "labor_cost", "client_signature", "tech_signature",
-  "budget_details", "qc_passed", "bench_test", "internal_notes"
+  "diagnosis", "labor_cost", "client_signature", "tech_signature",
+  "budget_details", "budget_status", "qc_passed", "bench_test", "internal_notes"
 ];
 
 const VALID_INVENTORY_COLUMNS = [
@@ -192,10 +192,16 @@ export const saveWorkOrder = async (workOrder) => {
   try {
     const snakeOrder = mapToSnakeCase(processedOrder, 'work_orders');
     const { error } = await supabase.from('work_orders').upsert(snakeOrder);
-    if (error) throw error;
+
+    if (error) {
+      console.error("Error de Supabase al guardar:", error);
+      throw error;
+    }
+
+    // Devolvemos la lista fresca de la nube
     return await getWorkOrders();
   } catch (error) {
-    console.error("Fallo guardado en nube:", error);
+    console.error("Fallo guardado en nube, manteniendo copia local:", error);
     return updatedLocal;
   }
 };
