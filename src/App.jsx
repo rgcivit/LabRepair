@@ -81,23 +81,48 @@ export default function App() {
   // Carga inicial y suscripción en tiempo real
   useEffect(() => {
     const initData = async () => {
-      setIsLoading(true);
-      // Cargar configuraciones, órdenes e inventario en paralelo
-      const [fetchedOrders, fetchedInventory, fetchedClients] = await Promise.all([
-        getWorkOrders(),
-        getInventory(),
-        getClients(),
-        getAppSettings() // Sincroniza configuraciones con la nube al iniciar
-      ]);
-      setOrders(fetchedOrders);
-      setInventory(fetchedInventory);
-      setClients(fetchedClients);
+      try {
+        setIsLoading(true);
 
-      // Verificar conexión real con Supabase
-      const { data, error } = await supabase.from('work_orders').select('id').limit(1);
-      setIsCloudConnected(!error);
+        // Timeout de seguridad: Si la nube no responde en 5s, cargamos local
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), 5000)
+        );
 
-      setIsLoading(false);
+        const dataPromise = Promise.all([
+          getWorkOrders(),
+          getInventory(),
+          getClients(),
+          getAppSettings()
+        ]);
+
+        const [fetchedOrders, fetchedInventory, fetchedClients] = await Promise.race([
+          dataPromise,
+          timeoutPromise
+        ]).catch(async () => {
+          console.warn("Cargando desde almacenamiento local por lentitud de red.");
+          // Fallback manual a local
+          return [
+            JSON.parse(localStorage.getItem('labrepair_work_orders') || '[]'),
+            JSON.parse(localStorage.getItem('labrepair_inventory') || '[]'),
+            JSON.parse(localStorage.getItem('labrepair_clients') || '[]')
+          ];
+        });
+
+        setOrders(fetchedOrders || []);
+        setInventory(fetchedInventory || []);
+        setClients(fetchedClients || []);
+
+        // Verificar conexión real con Supabase (sin bloquear el inicio)
+        supabase.from('work_orders').select('id').limit(1).then(({ error }) => {
+          setIsCloudConnected(!error);
+        });
+
+      } catch (err) {
+        console.error("Error crítico en inicio:", err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     initData();
