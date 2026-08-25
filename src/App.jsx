@@ -881,6 +881,15 @@ export default function App() {
                 {selectedOrder && (
                   <div className="flex flex-wrap gap-2">
                     <button
+                      onClick={(e) => handleDeleteOrder(selectedOrder.id, e)}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-black text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-all uppercase tracking-wider shrink-0"
+                      title="ELIMINAR ESTA ORDEN TOTALMENTE"
+                    >
+                      <Trash2 size={16} />
+                      <span>Borrar OT</span>
+                    </button>
+
+                    <button
                       onClick={() => generateQCCertificate(selectedOrder)}
                       disabled={!selectedOrder.qcPassed}
                       className="flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-20 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed rounded-lg shadow-lg shadow-indigo-650/10 transition-all uppercase tracking-wider shrink-0"
