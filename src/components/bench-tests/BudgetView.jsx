@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from "lucide-react";
 import { generateBudgetPDF } from '../../services/pdfService';
-import logo from '../logo laboratorio.jpeg';
+import logo from '../logo_laboratorio.jpeg';
 
 /**
  * Componente BudgetView de alta gama comercial e ingenieril.

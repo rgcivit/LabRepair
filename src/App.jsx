@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import logo from './components/logo laboratorio.jpeg';
+import logo from './components/logo_laboratorio.jpeg';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -444,6 +444,21 @@ export default function App() {
 
   if (publicOrderId) {
     return <PublicStatusView orderId={publicOrderId} />;
+  }
+
+  // PANTALLA DE CARGA INICIAL
+  if (isLoading && !currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 animate-pulse mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-8 h-8 text-slate-950">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 1113.4 24.8l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L5.75 21A2.67 2.67 0 111.9 17.2l5.83-5.83m4.12 1.42V4.12M11.42 12.83h-2.12m0 0a1.5 1.5 0 01-1.5-1.5v-2.12m0 0a1.5 1.5 0 011.5-1.5h2.12M11.42 7.7a1.5 1.5 0 011.5 1.5v2.12m0 0a1.5 1.5 0 01-1.5 1.5h-2.12" />
+          </svg>
+        </div>
+        <h2 className="text-white font-black uppercase tracking-widest text-sm animate-pulse">Iniciando Laboratorio...</h2>
+        <p className="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-tighter">Sincronizando banco de datos</p>
+      </div>
+    );
   }
 
   if (!currentUser) {

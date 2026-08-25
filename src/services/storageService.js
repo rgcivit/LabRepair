@@ -65,6 +65,7 @@ const mapToSnakeCase = (obj, table = 'work_orders') => {
 };
 
 export const mapToCamelCase = (obj) => {
+  if (!obj) return {};
   const camel = {};
   for (const key in obj) {
     const camelKey = key.replace(/([-_][a-z])/g, group => group.toUpperCase().replace('-', '').replace('_', ''));
