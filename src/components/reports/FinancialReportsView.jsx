@@ -24,6 +24,7 @@ export default function FinancialReportsView({ orders }) {
       weekly: 0,
       monthly: 0,
       total: 0,
+      pendingCollection: 0,
       filteredList: []
     };
 
@@ -78,6 +79,17 @@ export default function FinancialReportsView({ orders }) {
           }
         }
       }
+
+      // 3. PROCESAR PENDIENTES DE COBRO (Equipos en estado "LISTO")
+      if (order.status === 'LISTO') {
+        const pendingAmount = Math.max(0, parseFloat(order.estimatedBudget || details.grandTotal || 0));
+        data.pendingCollection += pendingAmount;
+
+        // Siempre mostrar los pendientes en la lista de "Todo" o si el usuario quiere ver qué falta cobrar
+        if (timeFilter === 'ALL') {
+          data.filteredList.push({ ...order, _reportType: 'PENDING_COLLECTION', _reportDate: entryDate, _reportAmount: pendingAmount });
+        }
+      }
     });
 
     // Ordenar por la fecha que estamos reportando
@@ -90,7 +102,7 @@ export default function FinancialReportsView({ orders }) {
     { title: 'Ganancia Diaria', amount: stats.daily, icon: <Clock className="text-cyan-400" />, color: 'from-cyan-500/20 to-blue-500/5' },
     { title: 'Ganancia Semanal', amount: stats.weekly, icon: <Calendar className="text-emerald-400" />, color: 'from-emerald-500/20 to-teal-500/5' },
     { title: 'Ganancia Mensual', amount: stats.monthly, icon: <TrendingUp className="text-indigo-400" />, color: 'from-indigo-500/20 to-purple-500/5' },
-    { title: 'Total Histórico', amount: stats.total, icon: <DollarSign className="text-amber-400" />, color: 'from-amber-500/20 to-orange-500/5' },
+    { title: 'Pendiente de Cobro', amount: stats.pendingCollection, icon: <DollarSign className="text-amber-400" />, color: 'from-amber-500/20 to-orange-500/5' },
   ];
 
   return (
@@ -184,6 +196,7 @@ export default function FinancialReportsView({ orders }) {
                     <div className="text-[9px] text-slate-500 uppercase flex gap-2">
                       {o._reportType === 'DIAG_ONLY' && <span className="text-cyan-600 font-bold">Abono Revisión / Seña</span>}
                       {o._reportType === 'DELIVERY' && <span className="text-emerald-600 font-bold">Saldo de Reparación (Entrega)</span>}
+                      {o._reportType === 'PENDING_COLLECTION' && <span className="text-amber-500 font-black animate-pulse">Pendiente de Cobro (Listo)</span>}
                     </div>
                   </td>
                   <td className="py-3 px-2 text-right font-mono font-black text-emerald-400">
