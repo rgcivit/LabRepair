@@ -329,36 +329,62 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
 
         <hr className="border-slate-800" />
 
-        {/* CHECKLIST DE CONTROL DE CALIDAD */}
+        {/* EVIDENCIA FOTOGRÁFICA DEL TRABAJO */}
         <div className="space-y-4">
-          <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
-            Checklist de Control de Calidad (QC)
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <ImageIcon size={14} className="text-cyan-500" />
+            Evidencia Fotográfica del Trabajo Realizado
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {checklistItems.map((item, idx) => (
-              <label
-                key={idx}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                  testForm.checklist[item]
-                    ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400'
-                    : 'bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-700'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!testForm.checklist[item]}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setTestForm(prev => ({
-                      ...prev,
-                      checklist: { ...prev.checklist, [item]: checked }
-                    }));
-                  }}
-                  className="w-4 h-4 accent-emerald-500"
-                />
-                <span className="text-xs font-bold">{item}</span>
-              </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+            {testForm.repairImages.map((img, i) => (
+              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group">
+                <img src={img} alt="Evidencia" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setFormValue('repairImages', testForm.repairImages.filter((_, idx) => idx !== i))}
+                  className="absolute top-1 right-1 p-1.5 bg-black/60 rounded-full text-rose-500 hover:bg-rose-600 hover:text-white transition-all"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             ))}
+            {testForm.repairImages.length < 10 && (
+              <div
+                onClick={async () => {
+                  if (Capacitor.isNativePlatform()) {
+                    try {
+                      const image = await CapCamera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Prompt });
+                      const compressed = await compressImage(`data:image/jpeg;base64,${image.base64String}`, 1024, 0.7);
+                      setFormValue('repairImages', [...testForm.repairImages, compressed]);
+                    } catch (e) {}
+                  } else {
+                    document.getElementById('repair-photo-input')?.click();
+                  }
+                }}
+                className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl hover:bg-slate-950 hover:border-cyan-500/50 cursor-pointer text-slate-600 transition-all group"
+              >
+                <Camera size={24} className="group-hover:text-cyan-500 transition-colors" />
+                <span className="text-[8px] mt-1 uppercase font-black tracking-widest group-hover:text-cyan-400">Adjuntar</span>
+                <input
+                  id="repair-photo-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                      const reader = new FileReader();
+                      reader.onloadend = async () => {
+                        const compressed = await compressImage(reader.result, 1024, 0.7);
+                        setFormValue('repairImages', [...testForm.repairImages, compressed]);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -402,36 +428,62 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
 
         <hr className="border-slate-800" />
 
-        {/* CHECKLIST DE CONTROL DE CALIDAD */}
+        {/* EVIDENCIA FOTOGRÁFICA DEL TRABAJO */}
         <div className="space-y-4">
-          <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">
-            Checklist de Control de Calidad (QC)
+          <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <ImageIcon size={14} className="text-cyan-500" />
+            Evidencia Fotográfica del Trabajo Realizado
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {checklistItems.map((item, idx) => (
-              <label
-                key={idx}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                  testForm.checklist[item]
-                    ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-400'
-                    : 'bg-slate-950 border-slate-850 text-slate-500 hover:border-slate-700'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!testForm.checklist[item]}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setTestForm(prev => ({
-                      ...prev,
-                      checklist: { ...prev.checklist, [item]: checked }
-                    }));
-                  }}
-                  className="w-4 h-4 accent-emerald-500"
-                />
-                <span className="text-xs font-bold">{item}</span>
-              </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+            {testForm.repairImages.map((img, i) => (
+              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group">
+                <img src={img} alt="Evidencia" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setFormValue('repairImages', testForm.repairImages.filter((_, idx) => idx !== i))}
+                  className="absolute top-1 right-1 p-1.5 bg-black/60 rounded-full text-rose-500 hover:bg-rose-600 hover:text-white transition-all"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             ))}
+            {testForm.repairImages.length < 10 && (
+              <div
+                onClick={async () => {
+                  if (Capacitor.isNativePlatform()) {
+                    try {
+                      const image = await CapCamera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Prompt });
+                      const compressed = await compressImage(`data:image/jpeg;base64,${image.base64String}`, 1024, 0.7);
+                      setFormValue('repairImages', [...testForm.repairImages, compressed]);
+                    } catch (e) {}
+                  } else {
+                    document.getElementById('repair-photo-input')?.click();
+                  }
+                }}
+                className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl hover:bg-slate-950 hover:border-cyan-500/50 cursor-pointer text-slate-600 transition-all group"
+              >
+                <Camera size={24} className="group-hover:text-cyan-500 transition-colors" />
+                <span className="text-[8px] mt-1 uppercase font-black tracking-widest group-hover:text-cyan-400">Adjuntar</span>
+                <input
+                  id="repair-photo-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                      const reader = new FileReader();
+                      reader.onloadend = async () => {
+                        const compressed = await compressImage(reader.result, 1024, 0.7);
+                        setFormValue('repairImages', [...testForm.repairImages, compressed]);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 
