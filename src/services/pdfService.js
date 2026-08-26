@@ -347,6 +347,27 @@ export const generateBudgetPDF = async (order, appLogo) => {
 
   renderTermsAndConditions(doc, currentY + 15);
 
+  // 6. Fotos de Evidencia del Trabajo (NUEVO)
+  const repairImages = Array.isArray(order.repairImages || order.repair_images) ? (order.repairImages || order.repair_images) : [];
+  if (repairImages.length > 0) {
+      doc.addPage();
+      doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 20, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.setFont("helvetica", "bold");
+      doc.text("ANEXO: EVIDENCIA FOTOGRÁFICA DEL TRABAJO REALIZADO", 15, 13);
+
+      let photoX = 15;
+      let photoY = 30;
+
+      repairImages.forEach((img, idx) => {
+          try {
+            if (photoY + 50 > 285) { doc.addPage(); photoY = 20; photoX = 15; }
+            doc.addImage(img, 'JPEG', photoX, photoY, 45, 45, undefined, 'FAST');
+            photoX += 48;
+            if ((idx + 1) % 4 === 0) { photoX = 15; photoY += 50; }
+          } catch(e) { console.warn("Error en imagen PDF presupuesto:", e); }
+      });
+  }
+
   const sanitizedClient = clientName.replace(/\s+/g, '_');
   await saveOrSharePDF(doc, `Presupuesto_${orderId}_${sanitizedClient}.pdf`);
 };
@@ -419,6 +440,30 @@ export const generateQCCertificate = (order) => {
   ];
 
   doc.autoTable({ startY: doc.lastAutoTable.finalY + 6, head: [["Parámetro", "Medición", "Unidad", "Estado"]], body: qcRows, theme: 'grid', headStyles: { fillColor: [30, 41, 59] } });
+
+  // 6. Fotos de Evidencia del Trabajo (NUEVO)
+  const repairImages = Array.isArray(order.repairImages || order.repair_images) ? (order.repairImages || order.repair_images) : [];
+  if (repairImages.length > 0) {
+      let currentY = doc.lastAutoTable.finalY + 10;
+      if (currentY > 180) { doc.addPage(); currentY = 20; }
+
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(30, 41, 59);
+      doc.text("EVIDENCIA TÉCNICA DEL TRABAJO:", 15, currentY);
+      doc.line(15, currentY + 2, 195, currentY + 2);
+
+      let photoX = 15;
+      let photoY = currentY + 6;
+
+      repairImages.forEach((img, idx) => {
+          try {
+            if (photoY + 45 > 285) { doc.addPage(); photoY = 20; photoX = 15; }
+            doc.addImage(img, 'JPEG', photoX, photoY, 40, 40, undefined, 'FAST');
+            photoX += 43;
+            if ((idx + 1) % 4 === 0) { photoX = 15; photoY += 45; }
+          } catch(e) { console.warn("Error en imagen PDF QC:", e); }
+      });
+  }
+
   renderTermsAndConditions(doc, doc.lastAutoTable.finalY + 10);
 
   const sigY = 265; doc.line(30, sigY, 85, sigY); doc.line(125, sigY, 180, sigY);
