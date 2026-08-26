@@ -232,11 +232,21 @@ export default function App() {
   // Función para borrar orden de trabajo
   const handleDeleteOrder = async (id, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm('¿Estás seguro de que deseas eliminar esta Orden de Trabajo?')) {
-      const updatedList = await deleteWorkOrder(id);
-      setOrders(updatedList);
-      if (selectedOrder?.id === id) {
-        setSelectedOrder(null);
+
+    // Alerta de seguridad para evitar borrados accidentales
+    const confirmed = window.confirm(`⚠️ ADVERTENCIA DE SEGURIDAD\n\nEstá a punto de ELIMINAR PERMANENTEMENTE la Orden de Trabajo #${id}.\n\nEsta acción borrará:\n- Datos del equipo y cliente.\n- Presupuesto y repuestos cargados.\n- Diagnóstico y notas técnicas.\n- Fotos y firmas asociadas.\n\nESTA ACCIÓN NO SE PUEDE DESHACER. ¿Desea continuar?`);
+
+    if (confirmed) {
+      try {
+        const updatedList = await deleteWorkOrder(id);
+        setOrders(updatedList);
+        if (selectedOrder?.id === id) {
+          setSelectedOrder(null);
+        }
+        alert(`La Orden #${id} ha sido eliminada correctamente.`);
+      } catch (err) {
+        console.error("Error al borrar:", err);
+        alert("Ocurrió un error al intentar eliminar la orden.");
       }
     }
   };

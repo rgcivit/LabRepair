@@ -12,7 +12,7 @@ const SETTINGS_LOCAL_KEY = 'estetica_lab_settings';
 const VALID_WORK_ORDER_COLUMNS = [
   "id", "client_name", "client_phone", "device_type", "brand_model",
   "serial_number", "issue_description", "cosmetic_condition", "estimated_budget", "priority",
-  "status", "entry_date", "delivery_date", "accessories", "images", "spare_parts",
+  "status", "entry_date", "delivery_date", "accessories", "images", "repair_images", "spare_parts",
   "diagnosis", "labor_cost", "client_signature", "tech_signature",
   "budget_details", "budget_status", "qc_passed", "bench_test", "internal_notes"
 ];
@@ -179,12 +179,23 @@ export const saveWorkOrder = async (workOrder) => {
     if (Array.isArray(processedOrder.images)) {
       const uploadPromises = processedOrder.images.map(async (img, idx) => {
         if (img.startsWith('data:')) {
-          const compressed = await compressImage(img, 1024, 0.7); // Fotos a 1024px
-          return await uploadFile(compressed, `photos/${orderId}_${idx}.jpg`);
+          const compressed = await compressImage(img, 1024, 0.7);
+          return await uploadFile(compressed, `photos/${orderId}_in_${idx}.jpg`);
         }
         return img;
       });
       processedOrder.images = await Promise.all(uploadPromises);
+    }
+
+    if (Array.isArray(processedOrder.repairImages)) {
+      const uploadPromises = processedOrder.repairImages.map(async (img, idx) => {
+        if (img.startsWith('data:')) {
+          const compressed = await compressImage(img, 1024, 0.7);
+          return await uploadFile(compressed, `photos/${orderId}_rep_${idx}.jpg`);
+        }
+        return img;
+      });
+      processedOrder.repairImages = await Promise.all(uploadPromises);
     }
   } catch (e) { console.warn("Error en subida de archivos:", e); }
 

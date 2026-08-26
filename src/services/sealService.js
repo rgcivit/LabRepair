@@ -43,7 +43,12 @@ export const generateSecuritySeal = async (order) => {
       // Ubicación centrada en la base de la faja (donde borraste el número largo)
       ctx.fillText(orderId, canvas.width * 0.5, canvas.height * 0.94);
 
-      // --- 3. GENERACIÓN DE CÓDIGO QR ---
+      // 3. WHATSAPP (Ubicación: Parte superior o inferior, para que sea visible)
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('WhatsApp: 2616625074', canvas.width * 0.05, canvas.height * 0.1);
+
+      // --- 4. GENERACIÓN DE CÓDIGO QR ---
       const statusUrl = `https://lab-repair-iota.vercel.app/status/${orderId}`;
       const qrImg = new Image();
       qrImg.crossOrigin = "anonymous";
