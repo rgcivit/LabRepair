@@ -272,6 +272,19 @@ export const saveInventoryItem = async (item) => {
   }
 };
 
+export const deleteInventoryItem = async (id) => {
+  try {
+    await supabase.from('inventory').delete().eq('id', id);
+    const local = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
+    const updated = local.filter(i => i.id !== id);
+    safeSaveLocal(INVENTORY_KEY, updated);
+    return updated;
+  } catch (error) {
+    const local = JSON.parse(localStorage.getItem(INVENTORY_KEY) || '[]');
+    return local.filter(i => i.id !== id);
+  }
+};
+
 // --- CONFIGURACIÓN ---
 
 export const getAppSettings = async () => {

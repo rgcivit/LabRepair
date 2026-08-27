@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { exportInventoryToPDF } from '../../services/pdfService';
+import { Trash2 } from "lucide-react";
 
 // List of standard categories for filtering and input
 const CATEGORIES = ['TODOS', 'PELTIER', 'BOMBAS', 'SENSORES', 'CONECTORES', 'FUENTES', 'LÁSER', 'CAPACITORES', 'RESISTENCIAS', 'DIODOS', 'TRANSISTORES', 'INTEGRADOS'];
@@ -21,9 +22,10 @@ const INITIAL_FORM_STATE = {
  * 
  * @param {Object} props
  * @param {Array} props.inventory - Listado del inventario actual en localStorage.
- * @param {Function} props.onSaveItem - Callback para registrar/actualizar un repuesto: (item) => void.
+ * @param {Function} props.onSaveItem - Callback para registrar/actualizar un repuesto.
+ * @param {Function} props.onDeleteItem - Callback para eliminar un repuesto.
  */
-export default function InventoryView({ inventory, onSaveItem }) {
+export default function InventoryView({ inventory, onSaveItem, onDeleteItem }) {
   // Estado para el filtrado de categoría
   const [activeCategory, setActiveCategory] = useState('TODOS');
   
@@ -314,6 +316,18 @@ export default function InventoryView({ inventory, onSaveItem }) {
                               +
                             </button>
                           </div>
+
+                          <span className="h-4 w-px bg-slate-850"></span>
+
+                          {/* Botón de Eliminación */}
+                          <button
+                            type="button"
+                            onClick={() => onDeleteItem(item.id)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            title="Eliminar del Almacén"
+                          >
+                            <Trash2 size={16} />
+                          </button>
 
                           <span className="h-4 w-px bg-slate-850"></span>
 

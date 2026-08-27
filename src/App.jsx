@@ -16,7 +16,7 @@ import {
   Trash2
 } from "lucide-react";
 import { supabase } from './services/supabaseClient';
-import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient, mapToCamelCase } from './services/storageService';
+import { getWorkOrders, saveWorkOrder, deleteWorkOrder, getInventory, saveInventoryItem, deleteInventoryItem, restoreFullBackup, getAppSettings, getClients, saveClient, deleteClient, mapToCamelCase } from './services/storageService';
 import { StatusBadge, PriorityBadge } from './components/common/Badges';
 import NewWorkOrderModal from './components/work-orders/NewWorkOrderModal';
 import BenchTestView from './components/bench-tests/BenchTestView';
@@ -292,6 +292,13 @@ export default function App() {
   const handleSaveInventoryItemGlobal = async (item) => {
     const updatedInventory = await saveInventoryItem(item);
     setInventory(updatedInventory);
+  };
+
+  const handleDeleteInventoryItem = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este repuesto del almacén?')) {
+      const updated = await deleteInventoryItem(id);
+      setInventory(updated);
+    }
   };
 
   // --- CLIENTES ---
@@ -1129,6 +1136,7 @@ export default function App() {
             <InventoryView 
               inventory={inventory}
               onSaveItem={handleSaveInventoryItemGlobal}
+              onDeleteItem={handleDeleteInventoryItem}
             />
           )}
 
