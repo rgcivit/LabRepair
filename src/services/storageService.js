@@ -87,6 +87,8 @@ const safeSaveLocal = (key, data) => {
         const lightData = data.map(o => ({
           ...o,
           images: [],
+          repairImages: [],
+          repair_images: [],
           client_signature: null,
           tech_signature: null
         }));

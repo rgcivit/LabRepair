@@ -1187,6 +1187,7 @@ export default function App() {
         }}
         editingOrder={editingOrder}
         clients={clients}
+        workOrders={orders}
         onSaveClient={handleSaveClient}
       />
 

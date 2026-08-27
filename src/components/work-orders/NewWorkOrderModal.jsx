@@ -13,14 +13,17 @@ const COMMON_ACCESSORIES = [
 ];
 
 const DEVICE_TYPES = [
-  "Criolipólisis", "VelaShape", "Electroporador", "Radiofrecuencia",
-  "Ultrasonido", "Láser de Diodo", "Ondas de Choque", "Presoterapia",
-  "Dermapen", "Otros"
+  "Láser de Diodo", "IPL (Luz Pulsada)", "Criolipólisis Plana", "Criolipólisis de Succión",
+  "Radiofrecuencia Multipolar", "Radiofrecuencia Fraccionada", "HIFU", "Ondas de Choque",
+  "Presoterapia", "Electroporador", "Magnetoterapia", "Ultracavitador", "Ultrasonido 1/3 MHz",
+  "VelaShape / Body Health", "Body Up", "Dermapen / Microneedling", "Alta Frecuencia",
+  "Microdermoabrasión", "Láser CO2 Fraccionado", "Q-Switch (Tatuajes)", "Otros"
 ];
 
 const BRANDS = [
-  "Meditea", "Electromedicina Morales", "Body Health", "Sveltia",
-  "Starbene", "Cec", "Texel", "Sorisa", "Otros"
+  "Meditea", "Electromedicina Morales", "Body Health", "Sveltia", "Starbene",
+  "CEC", "Texel", "Sorisa", "Alma Lasers", "Lutronic", "Cynosure", "Candela",
+  "Syneron", "Aerolase", "Zimmer", "BTL", "Otros"
 ];
 
 const PRIORITIES = ["BAJA", "MEDIA", "ALTA", "URGENTE"];
@@ -35,12 +38,14 @@ const STATUSES = [
 ];
 const MAX_IMAGES = 7;
 
-const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = [], onSaveClient }) => {
+const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = [], workOrders = [], onSaveClient }) => {
   const [formData, setFormData] = React.useState({
     clientName: "", clientPhone: "", deviceType: "", customDeviceType: "",
     brandModel: "", customBrandModel: "", serialNumber: "", issueDescription: "",
     cosmeticCondition: "", estimatedBudget: "", priority: "MEDIA", status: "INGRESO"
   });
+
+  const [warrantyStatus, setWarrantyStatus] = React.useState(null);
 
   const [selectedAccessories, setSelectedAccessories] = React.useState([]);
   const [images, setImages] = React.useState([]);
@@ -97,8 +102,37 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
       });
       setSelectedAccessories([]);
       setImages([]);
+      setWarrantyStatus(null);
     }
   }, [editingOrder, isOpen]);
+
+  // Detector de Garantía
+  React.useEffect(() => {
+    const sn = (formData.serialNumber || "").trim().toUpperCase();
+    if (sn.length > 3 && workOrders.length > 0) {
+      const pastOrder = workOrders.find(o =>
+        String(o.serialNumber).toUpperCase() === sn &&
+        o.status === 'ENTREGADO'
+      );
+
+      if (pastOrder) {
+        const deliveryDate = new Date(pastOrder.deliveryDate || pastOrder.delivery_date || pastOrder.entryDate);
+        const daysSince = Math.floor((new Date() - deliveryDate) / (1000 * 60 * 60 * 24));
+
+        if (daysSince <= 90) {
+          const expirationDate = new Date(deliveryDate);
+          expirationDate.setDate(expirationDate.getDate() + 90);
+          setWarrantyStatus({
+            originalId: pastOrder.id,
+            expiration: expirationDate.toLocaleDateString('es-AR'),
+            daysLeft: 90 - daysSince
+          });
+          return;
+        }
+      }
+    }
+    setWarrantyStatus(null);
+  }, [formData.serialNumber, workOrders]);
 
   if (!isOpen) return null;
 
@@ -399,7 +433,18 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
                 </div>
                 <div className="space-y-1">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase ml-1">Nro. de Serie *</label>
-                  <input type="text" required placeholder="S/N..." value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm outline-none transition-all" />
+                  <input type="text" required placeholder="S/N..." value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className={`w-full bg-slate-950 border rounded-xl px-4 py-2.5 text-sm outline-none transition-all ${warrantyStatus ? 'border-amber-500 text-amber-400 ring-2 ring-amber-500/20' : 'border-slate-800'}`} />
+                  {warrantyStatus && (
+                    <div className="bg-amber-950/40 border border-amber-500/30 p-2 rounded-lg mt-2 animate-pulse">
+                      <p className="text-[9px] font-black text-amber-500 uppercase flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                        Equipo en Período de Garantía
+                      </p>
+                      <p className="text-[8px] text-amber-600 font-bold mt-0.5">
+                        Última OT: #{warrantyStatus.originalId} • Vence: {warrantyStatus.expiration}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               {formData.deviceType === "Otros" && <input type="text" required placeholder="Especificar tipo" value={formData.customDeviceType} onChange={e => setFormData({...formData, customDeviceType: e.target.value})} className="w-full bg-slate-950 border border-cyan-500/50 rounded-xl px-3 py-2 text-xs" />}

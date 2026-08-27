@@ -177,13 +177,13 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
                 </button>
               </div>
             ))}
-            {testForm.repairImages.length < 10 && (
+            {testForm.repairImages.length < 15 && (
               <div onClick={async () => {
                 if (Capacitor.isNativePlatform()) {
                   try {
-                    const image = await CapCamera.getPhoto({ quality: 90, resultType: CameraResultType.Base64, source: CameraSource.Prompt });
-                    const compressed = await compressImage(`data:image/jpeg;base64,${image.base64String}`, 1024, 0.7);
-                    setFormValue('repairImages', [...testForm.repairImages, compressed]);
+                    const image = await CapCamera.getPhoto({ quality: 80, resultType: CameraResultType.Base64, source: CameraSource.Prompt });
+                    const compressed = await compressImage(`data:image/jpeg;base64,${image.base64String}`, 1024, 0.6);
+                    setTestForm(prev => ({ ...prev, repairImages: [...prev.repairImages, compressed] }));
                   } catch (e) {}
                 } else { document.getElementById('repair-photo-input')?.click(); }
               }} className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl hover:bg-slate-950 hover:border-cyan-500/50 cursor-pointer text-slate-600 transition-all group">
@@ -191,14 +191,18 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
                 <span className="text-[8px] mt-1 uppercase font-black tracking-widest group-hover:text-cyan-400">Adjuntar</span>
                 <input id="repair-photo-input" type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
                   const files = Array.from(e.target.files);
+                  const processedImages = [];
                   for (const file of files) {
                     const reader = new FileReader();
-                    reader.onloadend = async () => {
-                      const compressed = await compressImage(reader.result, 1024, 0.7);
-                      setFormValue('repairImages', [...testForm.repairImages, compressed]);
-                    };
-                    reader.readAsDataURL(file);
+                    const result = await new Promise((resolve) => {
+                      reader.onloadend = () => resolve(reader.result);
+                      reader.readAsDataURL(file);
+                    });
+                    const compressed = await compressImage(result, 1024, 0.6);
+                    processedImages.push(compressed);
                   }
+                  setTestForm(prev => ({ ...prev, repairImages: [...prev.repairImages, ...processedImages] }));
+                  e.target.value = ""; // Limpiar input para re-subida
                 }} />
               </div>
             )}
