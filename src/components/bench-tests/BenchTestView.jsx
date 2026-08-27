@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Camera, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Camera, Trash2, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
 import { Camera as CapCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { compressImage } from '../../services/imageUtils';
@@ -9,7 +9,8 @@ import { compressImage } from '../../services/imageUtils';
  * Brinda un diseño industrial y cibernético de ingeniería para registrar y validar parámetros físicos.
  */
 export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGeneratePDF }) {
-  
+  const [selectedImage, setSelectedImage] = useState(null); // Para el visor de fotos
+
   // Estado local para almacenar las mediciones de laboratorio
   const [testForm, setTestForm] = useState({
     coolantFlow: '',
@@ -170,9 +171,12 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
             {testForm.repairImages.map((img, i) => (
-              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group">
-                <img src={img} alt="Evidencia" className="w-full h-full object-cover" />
-                <button type="button" onClick={() => setFormValue('repairImages', testForm.repairImages.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 p-1.5 bg-black/60 rounded-full text-rose-500 hover:bg-rose-600 hover:text-white transition-all">
+              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group cursor-pointer" onClick={() => setSelectedImage(img)}>
+                <img src={img} alt="Evidencia" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                   <ZoomIn className="text-white" size={24} />
+                </div>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setFormValue('repairImages', testForm.repairImages.filter((_, idx) => idx !== i)); }} className="absolute top-1 right-1 p-1.5 bg-black/60 rounded-full text-rose-500 hover:bg-rose-600 hover:text-white transition-all z-10">
                   <Trash2 size={12} />
                 </button>
               </div>
@@ -258,6 +262,30 @@ export default function BenchTestView({ selectedOT, onSaveOT, inventory, onGener
         </div>
 
       </form>
+
+      {/* MODAL VISOR DE IMÁGENES */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">
+            <X size={28} />
+          </button>
+
+          <div className="max-w-5xl max-h-screen relative group" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={selectedImage}
+              alt="Ampliada"
+              className="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain cursor-zoom-in"
+              style={{ touchAction: 'pinch-zoom' }}
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md px-4 py-2 rounded-full text-[10px] text-slate-300 font-bold uppercase tracking-widest pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+               Vista Previa de Alta Resolución
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
