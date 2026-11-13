@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Edit } from 'lucide-react';
 import { StatusBadge } from '../common/Badges';
 import { exportSerialHistoryToPDF } from '../../services/pdfService';
 
@@ -9,8 +10,9 @@ import { exportSerialHistoryToPDF } from '../../services/pdfService';
  * 
  * @param {Object} props
  * @param {Array} props.workOrders - Historial completo de órdenes de trabajo del taller.
+ * @param {Function} [props.onEditOrder] - Callback opcional para editar una orden.
  */
-export default function SerialHistoryView({ workOrders }) {
+export default function SerialHistoryView({ workOrders = [], onEditOrder }) {
   const [query, setQuery] = useState('');
   const [selectedSerial, setSelectedSerial] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -217,21 +219,32 @@ export default function SerialHistoryView({ workOrders }) {
                     <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-lg p-5 space-y-4 hover:border-slate-700 transition-colors">
                       
                       {/* Cabecera Tarjeta */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-900 pb-3">
-                        <div className="flex items-center gap-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-900 pb-3">
+                        <div className="flex items-center gap-2.5 flex-wrap">
                           <span className="text-xs font-mono font-black text-cyan-400 bg-slate-900 px-2.5 py-1 rounded border border-slate-850">
                             {order.id}
                           </span>
                           <span className="text-xs text-slate-500 font-mono font-semibold">
-                            Fecha de Entrada: {order.entryDate}
+                            Fecha: {order.entryDate}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <StatusBadge status={order.status} />
                           {order.qcPassed && (
                             <span className="bg-emerald-950/60 text-emerald-400 border border-emerald-800/30 text-[10px] font-bold px-2 py-0.5 rounded">
                               QC PASSED ✓
                             </span>
+                          )}
+                          {onEditOrder && (
+                            <button
+                              type="button"
+                              onClick={() => onEditOrder(order)}
+                              className="px-2.5 py-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-all flex items-center gap-1 uppercase shadow-sm"
+                              title="Editar Orden de Trabajo"
+                            >
+                              <Edit size={13} />
+                              <span>Editar</span>
+                            </button>
                           )}
                         </div>
                       </div>

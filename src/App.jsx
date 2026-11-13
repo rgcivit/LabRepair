@@ -876,7 +876,7 @@ export default function App() {
               <div className={`flex-[2] ${!selectedOrder ? 'hidden lg:flex' : 'block'} min-h-[600px]`}>
                 {selectedOrder ? (
                   <div className="space-y-4 animate-fadeIn">
-                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                    <div className="bg-slate-950 border border-slate-800 p-3.5 sm:p-4 rounded-xl flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <button onClick={() => setSelectedOrder(null)} className="lg:hidden p-2 text-slate-400">
                           <X size={20} />
@@ -886,12 +886,13 @@ export default function App() {
                           <p className="text-[10px] text-cyan-400 font-mono">OT: {selectedOrder.id}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button onClick={(e) => handleDeleteOrder(selectedOrder.id, e)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors" title="Eliminar Orden">
                           <Trash2 size={16} />
                         </button>
-                        <button onClick={() => handleEditOrder(selectedOrder)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-amber-500" title="Editar Datos Básicos">
+                        <button onClick={() => handleEditOrder(selectedOrder)} className="px-3 py-2 bg-slate-900 border border-amber-500/30 rounded-lg text-amber-400 hover:bg-amber-500/10 transition-colors flex items-center gap-1.5 text-xs font-bold uppercase" title="Editar Datos Básicos">
                           <Settings2 size={16} />
+                          <span>Editar</span>
                         </button>
                         <button onClick={() => generateEntryReceipt(selectedOrder, selectedOrder.clientSignature, null)} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-emerald-500" title="Imprimir Comprobante">
                           <ClipboardList size={16} />
@@ -1151,6 +1152,7 @@ export default function App() {
           {activeTab === 'history' && (
             <SerialHistoryView 
               workOrders={orders}
+              onEditOrder={handleEditOrder}
             />
           )}
 

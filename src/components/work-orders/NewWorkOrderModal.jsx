@@ -336,23 +336,23 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="bg-[#0f172a] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto border border-slate-700 text-slate-100 selection:bg-cyan-500/30">
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div className="bg-[#0f172a] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-700 text-slate-100 selection:bg-cyan-500/30 overflow-hidden my-auto">
 
-          <div className="flex justify-between items-center p-6 border-b border-slate-800 sticky top-0 bg-[#0f172a] z-10">
+          <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-800 shrink-0 bg-[#0f172a] z-10">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-cyan-600 to-blue-700 rounded-xl text-white shadow-lg">
-                <Wrench className="w-6 h-6" />
+              <div className="p-2.5 sm:p-3 bg-gradient-to-br from-cyan-600 to-blue-700 rounded-xl text-white shadow-lg">
+                <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white tracking-widest uppercase">Nuevo Ingreso</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest font-mono">Registro Técnico de Equipo</p>
+                <h2 className="text-base sm:text-xl font-black text-white tracking-widest uppercase">{editingOrder ? `Editar Orden (${editingOrder.id})` : "Nuevo Ingreso"}</h2>
+                <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest font-mono">Registro Técnico de Equipo</p>
               </div>
             </div>
             <button type="button" onClick={handleClose} className="p-2 text-slate-500 hover:text-white transition-colors"><X /></button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1">
 
             <div className="space-y-4">
               <h3 className="text-[11px] font-black text-cyan-500 uppercase border-l-2 border-cyan-500 pl-3">Datos del Cliente</h3>
@@ -571,10 +571,12 @@ const NewWorkOrderModal = ({ isOpen, onClose, onSave, editingOrder, clients = []
               </div>
             </div>
 
-            <div className="flex justify-end items-center gap-4 pt-6 border-t border-slate-800">
-              <button type="button" onClick={handleClose} className="px-6 py-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">Cancelar</button>
-              <button type="button" onClick={handleSaveWithoutSignatures} className="px-4 py-2 text-[10px] font-bold text-amber-500 hover:text-amber-400 border border-amber-900/30 rounded-xl transition-all uppercase tracking-tighter">Guardar sin Firmas</button>
-              <button type="submit" className="px-10 py-3 text-xs font-black bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 rounded-xl uppercase tracking-widest shadow-lg shadow-cyan-500/10 active:scale-95 transition-all flex items-center gap-2">
+            <div className="flex flex-wrap justify-end items-center gap-2 sm:gap-3 pt-4 border-t border-slate-800 shrink-0 sticky bottom-0 bg-[#0f172a] pb-1">
+              <button type="button" onClick={handleClose} className="px-4 py-2.5 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">Cancelar</button>
+              <button type="button" onClick={handleSaveWithoutSignatures} className="px-4 py-2.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all uppercase tracking-wider shadow-md">
+                {editingOrder ? "Guardar Cambios" : "Guardar sin Firmas"}
+              </button>
+              <button type="submit" className="px-6 sm:px-8 py-2.5 text-xs font-black bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 rounded-xl uppercase tracking-widest shadow-lg shadow-cyan-500/10 active:scale-95 transition-all flex items-center gap-2">
                 <FileCheck size={16} /> Continuar a Firmas
               </button>
             </div>
